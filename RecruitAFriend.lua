@@ -26,17 +26,18 @@ local Config = {}
 
 -- Name of Eluna dB scheme
 Config.customDbName = "ac_eluna"
---max level the ONLY character on the players account may have to become a recruit
+-- max level the ONLY character on the players account may have to become a recruit
 Config.maxAllowedLevel = 9
---max number of simultaneous recruits
+-- max number of simultaneous recruits
 Config.maxAllowedRecruits = 5
---set to 1 to print error messages to the console. Any other value including nil turns it of.
+-- set to 1 to print error messages to the console. Any other value including nil turns it off.
 Config.printErrorsToConsole = 1
 -- min GM level to bind accounts without accessing it
 Config.minGMRankForCopy = 3
 -- max RAF duration in seconds. 2,592,000 = 30days
 Config.maxRAFduration = 2592000
-
+-- set to 1 to print a login message. Any other value including nil turns it off.
+Config.displayLoginMessage = 1
 ------------------------------------------
 -- NO ADJUSTMENTS REQUIRED BELOW THIS LINE
 ------------------------------------------
@@ -103,17 +104,6 @@ local function RAF_command(event, player, command)
                 return false
             end
 
-            --check if this account is already linked
-            Data_SQL = nil
-            local Data_SQL
-            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..' LIMIT 1;');
-            if Data_SQl ~= nil then
-                player:SendBroadcastMessage("Your account is already bound to. Aborting.")
-                if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". This account is already bound.") end
-                RAF_cleanup()
-                return false
-            end
-
             --check if the RECRUITER account has a maximum of Config.maxAllowedRecruits
             recruiterName = commandArray[3]
             Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `name` = "'..recruiterName..'" LIMIT 1;');
@@ -122,6 +112,17 @@ local function RAF_command(event, player, command)
             else
                 player:SendBroadcastMessage("The requested player does not exist. Check spelling and capitalization. Aborting.")
                 if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". Recruiter character "..recruiterName.." doesnt exist.") end
+                RAF_cleanup()
+                return false
+            end
+            
+            --check if this account is already linked
+            Data_SQL = nil
+            local Data_SQL
+            Data_SQL = CharDBQuery('SELECT `recruiter_account` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..' LIMIT 1;');
+            if Data_SQL ~= nil then
+                player:SendBroadcastMessage("Your account is already bound to "..recruiterAccountId..". Aborting.")
+                if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". This account is already bound.") end
                 RAF_cleanup()
                 return false
             end
@@ -151,8 +152,6 @@ local function RAF_command(event, player, command)
             RAF_cleanup()
             return false
         end
-    elseif commandArray[1] == "recruitafriend" then
-
     end
     return false
 end
@@ -170,6 +169,11 @@ function RAF_login(event, player)
     local existingRecruits
     local linkTime
     local playerIP
+    
+    -- display login message
+    if Config.displayLoginMessage == 1 then
+        player:SendBroadcastMessage("This server features a Recruit-a-friend module. Type .recruitafriend for help.")
+    end
 
     -- check for the same IP when a RECRUITER logs in
     playerAccountId = player:GetAccountId()
@@ -242,14 +246,15 @@ function RAF_login(event, player)
     end
 
 
-    -- todo: add rested at login while in RAF with Player:SetRestBonus( restBonus )
+    -- todo: add 1 full level of rested at login while in RAF with Player:SetRestBonus( restBonus )
 
     RAF_cleanup()
     return false
 end
 
-function RAF_levelChange()
-    -- todo: give rewards and end RAF
+function RAF_levelChange(event, player, oldLevel)
+    -- todo: give reward(s) and end RAF when max level is reached
+    -- todo: add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
 end
 
 
@@ -283,7 +288,8 @@ end
 function RAF_printHelp()
     player:SendBroadcastMessage("Syntax to become a recruit: .recruitafriend bind $FriendsCharacterName")
     player:SendBroadcastMessage("Syntax to stop being a recruit: .recruitafriend unbind")
-    player:SendBroadcastMessage("Syntax to summon the recruit: .recruitafriend bind $FriendsCharacterName")
+    player:SendBroadcastMessage("Syntax to summon the recruit: .recruitafriend summon $FriendsCharacterName")
+    player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon."
     RAF_cleanup()
     return false
 end
