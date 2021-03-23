@@ -1,6 +1,7 @@
 ## RecruitAFriend
 LUA script for Azerothcore with ElunaLUA to connect accounts from different players and reward them for certain criteria.
 
+### Work in progress
 
 ## Requirements:
 
