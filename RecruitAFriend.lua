@@ -250,7 +250,7 @@ local function RAF_command(event, player, command)
     return false
 end
 
-function RAF_login(event, player)
+local function RAF_login(event, player)
     local playerLevel
     local playerAccountId
     local recruiterAccountId
@@ -355,7 +355,7 @@ function RAF_login(event, player)
     return false
 end
 
-function RAF_levelChange(event, player, oldLevel)
+local function RAF_levelChange(event, player, oldLevel)
     local isRecruit = 0
     local playerAccountId = player:GetAccountId()
     local playerIP = Player:GetPlayerIP()
