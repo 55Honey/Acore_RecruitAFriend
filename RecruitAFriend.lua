@@ -25,6 +25,7 @@
 
 
 local Config = {}
+local Config_maps = {}
 
 -- Name of Eluna dB scheme
 Config.customDbName = "ac_eluna"
@@ -46,6 +47,15 @@ Config.displayLoginMessage = 1
 Config.autoBan = 1
 -- duration in seconds for an automatic ban
 Config.autoBanTime = 300
+-- allowed maps for summoning. additional maps can be added with a table.insert() line.
+-- Eastern kingdoms
+table.insert(Config_maps, 0)
+-- Kalimdor
+table.insert(Config_maps, 1)
+-- Outland
+--table.insert(Config_maps, 530)
+-- Northrend
+--table.insert(Config_maps, 571)
 ------------------------------------------
 -- NO ADJUSTMENTS REQUIRED BELOW THIS LINE
 ------------------------------------------
@@ -83,7 +93,7 @@ local function RAF_command(event, player, command)
     commandArray = RAF_splitString(command)
 
     if commandArray[1] == "recruitafriend" then
-        
+        -- prevent use from console
         if player == nil then
             print("This command is not meant to be used from the console.")
             RAF_cleanup()
@@ -193,7 +203,27 @@ local function RAF_command(event, player, command)
                     end
                 until not Data_SQL:NextRow()
             end
-            -- todo: do the zone/combat checks and possibly summon
+            -- do the zone/combat checks and possibly summon
+            local mapId = player:GetMapId()
+            -- allow to proceed if the player is on one of the maps listed above
+            if has_value(Config_maps, mapId) then
+                --allow to proceed if the player is not in combat
+                if not player:IsInCombat() then
+                    local group = player:GetGroup()
+                    local groupPlayers = group:GetMembers()
+                    for _, v in pairs(groupPlayers) do
+                        if v:GetName() == commandArray[3] then
+                            v:SummonPlayer(player)
+                        end
+                    end
+                else
+                    player:SendBroadcastMessage("Summoning is not possible in combat.")
+                end
+                return false
+            else
+                player:SendBroadcastMessage("Summoning is not possible here.")
+            end
+            return false
         elseif commandArray[2] == "list" then
             -- todo: print all recruits bound to this account by charname
         else
@@ -358,11 +388,21 @@ function RAF_splitString(inputstr, seperator)
     return t
 end
 
+
+local function RAF_hasValue (tab, val)
+    for index, value in ipairs(tab) do
+        if value == val then
+            return true
+        end
+    end
+    return false
+end
+
 function RAF_printHelp()
     player:SendBroadcastMessage("Syntax to become a recruit: .recruitafriend bind $FriendsCharacterName")
     player:SendBroadcastMessage("Syntax to stop being a recruit: .recruitafriend unbind")
     player:SendBroadcastMessage("Syntax to summon the recruit: .recruitafriend summon $FriendsCharacterName")
-    player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon.")
+    player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
     RAF_cleanup()
     return false
 end
