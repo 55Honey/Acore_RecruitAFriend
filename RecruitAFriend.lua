@@ -107,14 +107,17 @@ local function RAF_command(event, player, command)
         playerAccountId = player:GetAccountId()
         --let the RECRUITED player remove the existing connection
         if commandArray[2] == "unbind" then
-            CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE ´recruiter_account` = '..playerAccountId..';');
+            CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE `recruiter_account` = '..playerAccountId..';');
             RAF_cleanup()
             return false
         end
 
         -- provide syntax help
         if commandArray[2] == "help" or commandArray[3] == nil then
-            RAF_printHelp()
+            player:SendBroadcastMessage("Syntax to become a recruit: .recruitafriend bind $FriendsCharacterName")
+            player:SendBroadcastMessage("Syntax to stop being a recruit: .recruitafriend unbind")
+            player:SendBroadcastMessage("Syntax to summon the recruit: .recruitafriend summon $FriendsCharacterName")
+            player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
             RAF_cleanup()
             return false
         end
@@ -125,7 +128,7 @@ local function RAF_command(event, player, command)
         if commandArray[2] == "bind" then
 
             --check if this account already has other characters created on it
-            Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE ´account` = '..playerAccountId..' LIMIT 2;');
+            Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `account` = '..playerAccountId..' LIMIT 2;');
             repeat
                 if characterGuid ~= nil and characterGuid ~= Data_SQL:GetUInt32(0) then
                     player:SendBroadcastMessage("You have more characters than this one already. Aborting.")
@@ -159,7 +162,7 @@ local function RAF_command(event, player, command)
             --check if this account is already linked
             Data_SQL = nil
             local Data_SQL
-            Data_SQL = CharDBQuery('SELECT `recruiter_account` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..' LIMIT 1;');
+            Data_SQL = CharDBQuery('SELECT `recruiter_account` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..playerAccountId..' LIMIT 1;');
             if Data_SQL ~= nil then
                 player:SendBroadcastMessage("Your account was already bound in RAF. Aborting.")
                 if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". This account was already bound.") end
@@ -168,7 +171,7 @@ local function RAF_command(event, player, command)
             end
 
             --check if the RECRUITER account has a maximum of Config.maxAllowedRecruits
-            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..recruiterAccountId..' LIMIT '..Config.maxAllowedRecruits..';');
+            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = '..recruiterAccountId..' LIMIT '..Config.maxAllowedRecruits..';');
             existingRecruits = 0
             if Data_SQL ~= nil then
                 repeat
@@ -182,16 +185,19 @@ local function RAF_command(event, player, command)
                 return false
             end
 
+            print("playerAccountId: "..playerAccountId)
+            print("recruiterAccountId: "..recruiterAccountId)
+            local GameTime = tonumber(tostring(GetGameTime()))
             -- bind the accounts to each other
-            CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..';');
-            CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend` VALUES (`'..playerAccountId..'`, `'..recruiterAccountId..'`, `'..GetGameTime()..'`);');
+            CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..playerAccountId..';');
+            CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend` VALUES ('..playerAccountId..', '..recruiterAccountId..', '..GameTime..');');
             RAF_cleanup()
             return false
         elseif commandArray[2] == "summon" and commandArray[3] ~= nil then
 
             -- check if the target is a recruit of the player
             local Data_SQL2
-            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..' AND `time_stamp` > 0 LIMIT '..Config.maxAllowedRecruits..';');
+            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = '..playerAccountId..' AND `time_stamp` > 0 LIMIT '..Config.maxAllowedRecruits..';');
             if Data_SQL ~= nil then
                 repeat
                     Data_SQL2 = CharDBQuery('Select `account` FROM `characters` WHERE `name` = '..commandArray[2]..';')
@@ -233,7 +239,7 @@ local function RAF_command(event, player, command)
         elseif commandArray[2] == "list" then
             -- print all recruits bound to this account by charname
             local Data_SQL2
-            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..' AND `time_stamp` > 0 LIMIT '..Config.maxAllowedRecruits..';');
+            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = '..playerAccountId..' AND `time_stamp` > 0 LIMIT '..Config.maxAllowedRecruits..';');
             if Data_SQL ~= nil then
                 repeat
                     Data_SQL2 = CharDBQuery('SELECT `name` FROM `characters` WHERE `account` = '..Data_SQL:GetUInt32(0)..';')
@@ -242,7 +248,10 @@ local function RAF_command(event, player, command)
             end
         else
             -- print help also, if nothing matched the 2nd argument
-            RAF_printHelp()
+            player:SendBroadcastMessage("Syntax to become a recruit: .recruitafriend bind $FriendsCharacterName")
+            player:SendBroadcastMessage("Syntax to stop being a recruit: .recruitafriend unbind")
+            player:SendBroadcastMessage("Syntax to summon the recruit: .recruitafriend summon $FriendsCharacterName")
+            player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
             RAF_cleanup()
             return false
         end
@@ -273,7 +282,7 @@ local function RAF_login(event, player)
     
     -- check for the same IP when a RECRUITER logs in
     playerAccountId = player:GetAccountId()
-    playerIP = Player:GetPlayerIP()
+    playerIP = player:GetPlayerIP()
     Data_SQL = CharDBQuery('SELECT account_id FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = "'..playerAccountId..'" LIMIT '..Config.maxAllowedRecruits..';');
     if Data_SQL ~= nil then
         isRecruiter = 1
@@ -283,7 +292,7 @@ local function RAF_login(event, player)
             print("A tostring(playerIP) = "..tostring(playerIP))
             print("B tostring(Data_SQL2:GetString(0)) = "..tostring(Data_SQL2:GetString(0)))
             if tostring(playerIP) == tostring(Data_SQL2:GetString(0)) then
-                CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE ´recruiter_account` = '..playerAccountId..';');
+                CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE `recruiter_account` = '..playerAccountId..';');
                 player:SendBroadcastMessage("Your Recruit-A-Friend link was removed.")
                 if Config.printErrorsToConsole == 1 then print("RAF link removed due to same IP for RECRUITER "..playerAccountId..".") end
                 if config.autoBan == 1 then
@@ -298,14 +307,14 @@ local function RAF_login(event, player)
 
     -- check for the same IP when a RECRUIT logs in
     playerAccountId = player:GetAccountId()
-    playerIP = Player:GetPlayerIP()
+    playerIP = player:GetPlayerIP()
     Data_SQL = CharDBQuery('SELECT recruiter_account FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = "'..playerAccountId..'" LIMIT 1;');
     if Data_SQL ~= nil then
         isRecruit = 1
         recruiterAccountId = Data_SQL:GetUInt32(0)
         Data_SQL2 = AuthDBQuery('SELECT last_ip FROM `account` WHERE `id` = '..recruiterAccountId..';');
         if tostring(playerIP) == tostring(Data_SQL2:GetString(0)) then
-            CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE ´recruiter_account` = '..playerAccountId..';');
+            CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE `recruiter_account` = '..playerAccountId..';');
             player:SendBroadcastMessage("Your Recruit-A-Friend link was removed.")
             if Config.printErrorsToConsole == 1 then print("RAF link removed due to same IP for RECRUITER "..playerAccountId..".") end
                 if config.autoBan == 1 then
@@ -318,10 +327,10 @@ local function RAF_login(event, player)
     end
 
     -- check for RAF timeout on login of the RECRUIT, possibly remove the link
-    Data_SQL = CharDBQuery('SELECT `time_stamp` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..' LIMIT 1;');
+    Data_SQL = CharDBQuery('SELECT `time_stamp` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..playerAccountId..' LIMIT 1;');
     if Data_SQL ~= nil then linkTime = Data_SQL:GetUInt32(0) end
     if Config.maxRAFduration + linkTime < GetGameTime() then
-        CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..';');
+        CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..playerAccountId..';');
         player:SendBroadcastMessage("Your Recruit-A-Friend link was removed because it timed out.")
         if Config.printErrorsToConsole == 1 then print("RAF link removed due to timeout for RECRUIT "..playerAccountId..".") end
         RAF_cleanup()
@@ -329,14 +338,14 @@ local function RAF_login(event, player)
     end
 
     -- check for RAF timeout on login of the RECRUITER, possibly remove the link
-    Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..' LIMIT '..Config.maxAllowedRecruits..';');
+    Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = '..playerAccountId..' LIMIT '..Config.maxAllowedRecruits..';');
     if Data_SQL ~= nil then
         repeat
             recruitAccountId = Data_SQL:GetUInt32(0)
-            Data_SQL2 = CharDBQuery('SELECT `time_stamp` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..recruitAccountId..' LIMIT 1;');
+            Data_SQL2 = CharDBQuery('SELECT `time_stamp` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = '..recruitAccountId..' LIMIT 1;');
             if Data_SQL2 ~= nil then linkTime = Data_SQL2:GetUInt32(0) end
             if Config.maxRAFduration + linkTime < GetGameTime() then
-                CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..recruitAccountId..';');
+                CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..recruitAccountId..';');
                 player:SendBroadcastMessage("Your Recruit-A-Friend link was removed because it timed out.")
                 if Config.printErrorsToConsole == 1 then print("RAF link removed due to timeout for RECRUIT "..recruitAccountId..".") end
                 RAF_cleanup()
@@ -407,15 +416,6 @@ local function RAF_hasValue (tab, val)
             return true
         end
     end
-    return false
-end
-
-function RAF_printHelp()
-    player:SendBroadcastMessage("Syntax to become a recruit: .recruitafriend bind $FriendsCharacterName")
-    player:SendBroadcastMessage("Syntax to stop being a recruit: .recruitafriend unbind")
-    player:SendBroadcastMessage("Syntax to summon the recruit: .recruitafriend summon $FriendsCharacterName")
-    player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
-    RAF_cleanup()
     return false
 end
 
