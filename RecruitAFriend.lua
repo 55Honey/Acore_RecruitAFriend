@@ -36,7 +36,7 @@ Config.maxAllowedRecruits = 5
 -- set to 1 to print error messages to the console. Any other value including nil turns it off.
 Config.printErrorsToConsole = 1
 -- min GM level to bind accounts without accessing it
-Config.minGMRankForCopy = 3
+Config.minGMRankForBind = 2
 -- max RAF duration in seconds. 2,592,000 = 30days
 Config.maxRAFduration = 2592000
 -- set to 1 to grant always rested. Any other value including nil turns it off.
@@ -47,6 +47,8 @@ Config.displayLoginMessage = 1
 Config.autoBan = 1
 -- duration in seconds for an automatic ban
 Config.autoBanTime = 300
+-- the level which a player must reach to reward it's recruiter and automatically end RAF
+Config.targetLevel = 29
 -- allowed maps for summoning. additional maps can be added with a table.insert() line.
 -- Eastern kingdoms
 table.insert(Config_maps, 0)
@@ -72,9 +74,9 @@ local RAF_row = 1
 RAF_xpPerLevel = {}
 RAF_Data_SQL = WorldDBQuery('SELECT Experience FROM player_xp_for_level WHERE Level <= 80;')
 repeat
-    RAF_xpPerLevel[RAF_row] = Data_SQL:GetUInt32(0)
+    RAF_xpPerLevel[RAF_row] = RAF_Data_SQL:GetUInt32(0)
     RAF_row = RAF_row + 1
-until not Data_SQL:NextRow()
+until not RAF_Data_SQL:NextRow()
 RAF_Data_SQL = nil
 RAF_row = nil
 
@@ -91,8 +93,10 @@ local function RAF_command(event, player, command)
     local playerIP
     -- split the command variable into several strings which can be compared individually
     commandArray = RAF_splitString(command)
+    if commandArray[1] == "ForceBindRAF" then
+    -- todo: add GM command to force bind from console
 
-    if commandArray[1] == "recruitafriend" then
+    elseif commandArray[1] == "recruitafriend" then
         -- prevent use from console
         if player == nil then
             print("This command is not meant to be used from the console.")
@@ -140,7 +144,7 @@ local function RAF_command(event, player, command)
                 return false
             end
 
-            --check if the RECRUITER account has a maximum of Config.maxAllowedRecruits
+            -- check if the 3rd argument is a character name
             recruiterName = commandArray[3]
             Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `name` = "'..recruiterName..'" LIMIT 1;');
             if Data_SQL ~= nil then
@@ -157,12 +161,13 @@ local function RAF_command(event, player, command)
             local Data_SQL
             Data_SQL = CharDBQuery('SELECT `recruiter_account` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..' LIMIT 1;');
             if Data_SQL ~= nil then
-                player:SendBroadcastMessage("Your account is already bound to "..recruiterAccountId..". Aborting.")
+                player:SendBroadcastMessage("Your account was already bound in RAF. Aborting.")
                 if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". This account was already bound.") end
                 RAF_cleanup()
                 return false
             end
 
+            --check if the RECRUITER account has a maximum of Config.maxAllowedRecruits
             Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..recruiterAccountId..' LIMIT '..Config.maxAllowedRecruits..';');
             existingRecruits = 0
             if Data_SQL ~= nil then
@@ -183,10 +188,10 @@ local function RAF_command(event, player, command)
             RAF_cleanup()
             return false
         elseif commandArray[2] == "summon" and commandArray[3] ~= nil then
+
             -- check if the target is a recruit of the player
             local Data_SQL2
-            local isValidRecruit = 0
-            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..' LIMIT '..Config.maxAllowedRecruits..';');
+            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..' AND `time_stamp` > 0 LIMIT '..Config.maxAllowedRecruits..';');
             if Data_SQL ~= nil then
                 repeat
                     Data_SQL2 = CharDBQuery('Select `account` FROM `characters` WHERE `name` = '..commandArray[2]..';')
@@ -203,6 +208,7 @@ local function RAF_command(event, player, command)
                     end
                 until not Data_SQL:NextRow()
             end
+
             -- do the zone/combat checks and possibly summon
             local mapId = player:GetMapId()
             -- allow to proceed if the player is on one of the maps listed above
@@ -225,7 +231,15 @@ local function RAF_command(event, player, command)
             end
             return false
         elseif commandArray[2] == "list" then
-            -- todo: print all recruits bound to this account by charname
+            -- print all recruits bound to this account by charname
+            local Data_SQL2
+            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..' AND `time_stamp` > 0 LIMIT '..Config.maxAllowedRecruits..';');
+            if Data_SQL ~= nil then
+                repeat
+                    Data_SQL2 = CharDBQuery('SELECT `name` FROM `characters` WHERE `account` = '..Data_SQL:GetUInt32(0)..';')
+                    player:SendBroadcastMessage(Data_SQL2:GetString(0))
+                until not Data_SQL:NextRow()
+            end
         else
             -- print help also, if nothing matched the 2nd argument
             RAF_printHelp()
@@ -314,8 +328,6 @@ function RAF_login(event, player)
         return false
     end
 
-    -- todo: check for the reward conditions being fulfilled AFTER ip check and BEFORE timeout check
-
     -- check for RAF timeout on login of the RECRUITER, possibly remove the link
     Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..' LIMIT '..Config.maxAllowedRecruits..';');
     if Data_SQL ~= nil then
@@ -347,12 +359,12 @@ function RAF_levelChange(event, player, oldLevel)
     local isRecruit = 0
     local playerAccountId = player:GetAccountId()
     local playerIP = Player:GetPlayerIP()
-    local Data_SQL = CharDBQuery('SELECT recruiter_account FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = "'..playerAccountId..'" LIMIT 1;');
+    local Data_SQL = CharDBQuery('SELECT recruiter_account FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = "'..playerAccountId..'" AND `time_stamp` > 0 LIMIT 1;');
     if Data_SQL ~= nil then
         isRecruit = 1
     end
                     
-    -- todo: give reward(s) and end RAF when max level is reached
+    -- todo: give reward(s) via mail to the recruiter and end RAF when target level is reached
 
     -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
     if Config.grantRested == 1 and isRecruit == 1 then
