@@ -93,7 +93,7 @@ local function RAF_command(event, player, command)
         playerAccountId = player:GetAccountId()
         --let the RECRUITED player remove the existing connection
         if commandArray[2] == "unbind" then
-            CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..';');
+            CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE ´recruiter_account` = '..playerAccountId..';');
             RAF_cleanup()
             return false
         end
@@ -148,7 +148,7 @@ local function RAF_command(event, player, command)
             Data_SQL = CharDBQuery('SELECT `recruiter_account` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..' LIMIT 1;');
             if Data_SQL ~= nil then
                 player:SendBroadcastMessage("Your account is already bound to "..recruiterAccountId..". Aborting.")
-                if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". This account is already bound.") end
+                if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". This account was already bound.") end
                 RAF_cleanup()
                 return false
             end
@@ -185,7 +185,7 @@ local function RAF_command(event, player, command)
                         RAF_cleanup()
                         return false
                     else   
-                        if Data_SQL::GetUInt32(0) ~= Data_SQL2::GetUInt32(0) then
+                        if Data_SQL:GetUInt32(0) ~= Data_SQL2:GetUInt32(0) then
                             player:SendBroadcastMessage("The requested player is not your recruit. Check spelling and capitalization. Aborting.")
                             RAF_cleanup()
                             return false
@@ -194,7 +194,7 @@ local function RAF_command(event, player, command)
                 until not Data_SQL:NextRow()
             end
             -- todo: do the zone/combat checks and possibly summon
-        elseif commandArray[2] == "list"
+        elseif commandArray[2] == "list" then
             -- todo: print all recruits bound to this account by charname
         else
             -- print help also, if nothing matched the 2nd argument
@@ -239,12 +239,12 @@ function RAF_login(event, player)
             print("A tostring(playerIP) = "..tostring(playerIP))
             print("B tostring(Data_SQL2:GetString(0)) = "..tostring(Data_SQL2:GetString(0)))
             if tostring(playerIP) == tostring(Data_SQL2:GetString(0)) then
-                CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..';');
+                CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE ´recruiter_account` = '..playerAccountId..';');
                 player:SendBroadcastMessage("Your Recruit-A-Friend link was removed.")
                 if Config.printErrorsToConsole == 1 then print("RAF link removed due to same IP for RECRUITER "..playerAccountId..".") end
-                if config.autoBan = 1 then
+                if config.autoBan == 1 then
                     result = Ban(2, tostring(playerIP), Config.autoBanTime, "RAF abuse", "RAF")
-                    if Config.printErrorsToConsole == 1 then print("Automatic ban for possible IP abuse in RAF for IP '..tostring(playerIP)..'.') end;
+                    if Config.printErrorsToConsole == 1 then print("Automatic ban for possible IP abuse in RAF for IP "..tostring(playerIP)..".") end;
                 end
                 RAF_cleanup()
                 return false
@@ -261,12 +261,12 @@ function RAF_login(event, player)
         recruiterAccountId = Data_SQL:GetUInt32(0)
         Data_SQL2 = AuthDBQuery('SELECT last_ip FROM `account` WHERE `id` = '..recruiterAccountId..';');
         if tostring(playerIP) == tostring(Data_SQL2:GetString(0)) then
-            CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..';');
+            CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE ´recruiter_account` = '..playerAccountId..';');
             player:SendBroadcastMessage("Your Recruit-A-Friend link was removed.")
             if Config.printErrorsToConsole == 1 then print("RAF link removed due to same IP for RECRUITER "..playerAccountId..".") end
-                if config.autoBan = 1 then
+                if config.autoBan == 1 then
                     result = Ban(2, tostring(playerIP), Config.autoBanTime, "RAF abuse", "RAF")
-                    if Config.printErrorsToConsole == 1 then print("Automatic ban for possible IP abuse in RAF for IP '..tostring(playerIP)..'.') end;
+                    if Config.printErrorsToConsole == 1 then print("Automatic ban for possible IP abuse in RAF for IP "..tostring(playerIP)..".") end;
                 end
             RAF_cleanup()
             return false
@@ -305,7 +305,7 @@ function RAF_login(event, player)
 
     
     -- add 1 full level of rested at login while in RAF with Player:SetRestBonus( restBonus )
-    if Config.grantRested = 1 and isRecruit = 1 then
+    if Config.grantRested == 1 and isRecruit == 1 then
         player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
     end    
 
@@ -325,7 +325,7 @@ function RAF_levelChange(event, player, oldLevel)
     -- todo: give reward(s) and end RAF when max level is reached
 
     -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
-    if Config.grantRested = 1 and isRecruit = 1 then
+    if Config.grantRested == 1 and isRecruit == 1 then
         player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
     end 
 end
@@ -362,7 +362,7 @@ function RAF_printHelp()
     player:SendBroadcastMessage("Syntax to become a recruit: .recruitafriend bind $FriendsCharacterName")
     player:SendBroadcastMessage("Syntax to stop being a recruit: .recruitafriend unbind")
     player:SendBroadcastMessage("Syntax to summon the recruit: .recruitafriend summon $FriendsCharacterName")
-    player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon."
+    player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon.")
     RAF_cleanup()
     return false
 end
