@@ -45,8 +45,8 @@ local PLAYER_EVENT_ON_LOGIN = 3          -- (event, player)
 local PLAYER_EVENT_ON_LEVEL_CHANGE = 13  -- (event, player, oldLevel)
 local PLAYER_EVENT_ON_COMMAND = 42       -- (event, player, command) - player is nil if command used from console. Can return false
 
-CharDBQuery('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
-CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_friend` (`account_id` INT(11) NOT NULL, `recruiter_account` INT(11) DEFAULT 0, `time_stamp` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
+CharDBExecute('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
+CharDBExecute('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_friend` (`account_id` INT(11) NOT NULL, `recruiter_account` INT(11) DEFAULT 0, `time_stamp` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
 
 
 local function RAF_command(event, player, command)
@@ -67,7 +67,7 @@ local function RAF_command(event, player, command)
         playerAccountId = player:GetAccountId()
         --let the RECRUITED player remove the existing connection
         if commandArray[2] == "unbind" then
-            Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..';');
+            CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..';');
             RAF_cleanup()
             return false
         end
@@ -142,8 +142,8 @@ local function RAF_command(event, player, command)
             end
 
             -- bind the accounts to each other
-            Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..';');
-            Data_SQL = CharDBQuery('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend` VALUES (`'..playerAccountId..'`, `'..recruiterAccountId..'`, `'..GetGameTime()..'`);');
+            CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..';');
+            CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend` VALUES (`'..playerAccountId..'`, `'..recruiterAccountId..'`, `'..GetGameTime()..'`);');
             RAF_cleanup()
             return false
         else
@@ -186,7 +186,7 @@ function RAF_login(event, player)
             print("tostring(playerIP) = "..tostring(playerIP))
             print("tostring(Data_SQL2:GetString(0)) = "..tostring(Data_SQL2:GetString(0)))
             if tostring(playerIP) == tostring(Data_SQL2:GetString(0)) then
-                Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..';');
+                CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..';');
                 player:SendBroadcastMessage("Your Recruit-A-Friend link was removed.")
                 if Config.printErrorsToConsole == 1 then print("RAF link removed due to same IP for RECRUITER "..playerAccountId..".") end
                 RAF_cleanup()
@@ -203,7 +203,7 @@ function RAF_login(event, player)
         recruiterAccountId = Data_SQL:GetUInt32(0)
         Data_SQL2 = AuthDBQuery('SELECT last_ip FROM `account` WHERE `id` = '..recruiterAccountId..';');
         if tostring(playerIP) == tostring(Data_SQL2:GetString(0)) then
-            Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..';');
+            CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..';');
             player:SendBroadcastMessage("Your Recruit-A-Friend link was removed.")
             if Config.printErrorsToConsole == 1 then print("RAF link removed due to same IP for RECRUITER "..playerAccountId..".") end
             RAF_cleanup()
@@ -218,7 +218,7 @@ function RAF_login(event, player)
 
     --remove the RAF link after the period given in config
     if Config.maxRAFduration + linkTime < GetGameTime() then
-        Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..';');
+        CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..';');
         player:SendBroadcastMessage("Your Recruit-A-Friend link was removed because it timed out.")
         if Config.printErrorsToConsole == 1 then print("RAF link removed due to timeout for RECRUIT "..playerAccountId..".") end
         RAF_cleanup()
@@ -236,7 +236,7 @@ function RAF_login(event, player)
             if Data_SQL2 ~= nil then linkTime = Data_SQL2:GetUInt32(0) end
             --remove the RAF link after the period given in config
             if Config.maxRAFduration + linkTime < GetGameTime() then
-                Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..recruitAccountId..';');
+                CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..recruitAccountId..';');
                 player:SendBroadcastMessage("Your Recruit-A-Friend link was removed because it timed out.")
                 if Config.printErrorsToConsole == 1 then print("RAF link removed due to timeout for RECRUIT "..recruitAccountId..".") end
                 RAF_cleanup()
