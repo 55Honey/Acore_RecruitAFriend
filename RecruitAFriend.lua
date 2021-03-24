@@ -19,6 +19,7 @@
 --               - as the new player(RECRUIT): unbind your account from a RECRUITER by typing ".recruitafriend unbind"
 --               - as the existing player (RECRUITER): summon your friend with ".recruitafriend summon $FriendsCharacterName"
 --               - once the RECRUIT reaches a level set in config, the RECRUITER receives a reward.
+--               - same IP restricts or removes the bind (sorry families and roommates)
 ------------------------------------------------------------------------------------------------
 
 
@@ -36,8 +37,14 @@ Config.printErrorsToConsole = 1
 Config.minGMRankForCopy = 3
 -- max RAF duration in seconds. 2,592,000 = 30days
 Config.maxRAFduration = 2592000
+-- set to 1 to grant always rested. Any other value including nil turns it off.
+Config.grantRested = 1
 -- set to 1 to print a login message. Any other value including nil turns it off.
 Config.displayLoginMessage = 1
+-- set to 1 to ban automatically when IP abuse is detected. Any other value including nil turns it off.
+Config.autoBan = 1
+-- duration in seconds for an automatic ban
+Config.autoBanTime = 300
 ------------------------------------------
 -- NO ADJUSTMENTS REQUIRED BELOW THIS LINE
 ------------------------------------------
@@ -47,6 +54,18 @@ local PLAYER_EVENT_ON_COMMAND = 42       -- (event, player, command) - player is
 
 CharDBExecute('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
 CharDBExecute('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_friend` (`account_id` INT(11) NOT NULL, `recruiter_account` INT(11) DEFAULT 0, `time_stamp` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
+
+local Data_SQL
+local RAF_row = 1
+--global table which reads the required XP per level one single time on load from the db instead of one value every levelup event
+RAF_xpPerLevel = {}
+RAF_Data_SQL = WorldDBQuery('SELECT Experience FROM player_xp_for_level WHERE Level <= 80;')
+repeat
+    RAF_xpPerLevel[RAF_row] = Data_SQL:GetUInt32(0)
+    RAF_row = RAF_row + 1
+until not Data_SQL:NextRow()
+RAF_Data_SQL = nil
+RAF_row = nil
 
 
 local function RAF_command(event, player, command)
@@ -169,26 +188,33 @@ function RAF_login(event, player)
     local existingRecruits
     local linkTime
     local playerIP
+    local isRecruiter
+    local isRecruit
     
     -- display login message
     if Config.displayLoginMessage == 1 then
         player:SendBroadcastMessage("This server features a Recruit-a-friend module. Type .recruitafriend for help.")
     end
-
+    
     -- check for the same IP when a RECRUITER logs in
     playerAccountId = player:GetAccountId()
     playerIP = Player:GetPlayerIP()
     Data_SQL = CharDBQuery('SELECT account_id FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = "'..playerAccountId..'" LIMIT '..Config.maxAllowedRecruits..';');
     if Data_SQL ~= nil then
+        isRecruiter = 1
         repeat
             recruitAccountId = Data_SQL:GetUInt32(0)
             DataSQL2 = AuthDBQuery('SELECT last_ip FROM `account` WHERE `id` = '..recruitAccountId..';');
-            print("tostring(playerIP) = "..tostring(playerIP))
-            print("tostring(Data_SQL2:GetString(0)) = "..tostring(Data_SQL2:GetString(0)))
+            print("A tostring(playerIP) = "..tostring(playerIP))
+            print("B tostring(Data_SQL2:GetString(0)) = "..tostring(Data_SQL2:GetString(0)))
             if tostring(playerIP) == tostring(Data_SQL2:GetString(0)) then
                 CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..';');
                 player:SendBroadcastMessage("Your Recruit-A-Friend link was removed.")
                 if Config.printErrorsToConsole == 1 then print("RAF link removed due to same IP for RECRUITER "..playerAccountId..".") end
+                if config.autoBan = 1 then
+                    result = Ban(2, tostring(playerIP), Config.autoBanTime, "RAF abuse", "RAF")
+                    if Config.printErrorsToConsole == 1 then print("Automatic ban for possible IP abuse in RAF for IP '..tostring(playerIP)..'.') end;
+                end
                 RAF_cleanup()
                 return false
             end
@@ -200,23 +226,25 @@ function RAF_login(event, player)
     playerIP = Player:GetPlayerIP()
     Data_SQL = CharDBQuery('SELECT recruiter_account FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = "'..playerAccountId..'" LIMIT 1;');
     if Data_SQL ~= nil then
+        isRecruit = 1
         recruiterAccountId = Data_SQL:GetUInt32(0)
         Data_SQL2 = AuthDBQuery('SELECT last_ip FROM `account` WHERE `id` = '..recruiterAccountId..';');
         if tostring(playerIP) == tostring(Data_SQL2:GetString(0)) then
             CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..';');
             player:SendBroadcastMessage("Your Recruit-A-Friend link was removed.")
             if Config.printErrorsToConsole == 1 then print("RAF link removed due to same IP for RECRUITER "..playerAccountId..".") end
+                if config.autoBan = 1 then
+                    result = Ban(2, tostring(playerIP), Config.autoBanTime, "RAF abuse", "RAF")
+                    if Config.printErrorsToConsole == 1 then print("Automatic ban for possible IP abuse in RAF for IP '..tostring(playerIP)..'.') end;
+                end
             RAF_cleanup()
             return false
         end
     end
 
-    -- check for RAF timeout on login of the RECRUIT
+    -- check for RAF timeout on login of the RECRUIT, possibly remove the link
     Data_SQL = CharDBQuery('SELECT `time_stamp` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..' LIMIT 1;');
     if Data_SQL ~= nil then linkTime = Data_SQL:GetUInt32(0) end
-    -- todo: not done here
-
-    --remove the RAF link after the period given in config
     if Config.maxRAFduration + linkTime < GetGameTime() then
         CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..playerAccountId..';');
         player:SendBroadcastMessage("Your Recruit-A-Friend link was removed because it timed out.")
@@ -227,14 +255,13 @@ function RAF_login(event, player)
 
     -- todo: check for the reward conditions being fulfilled AFTER ip check and BEFORE timeout check
 
-    -- check for RAF timeout on login of the RECRUITER
+    -- check for RAF timeout on login of the RECRUITER, possibly remove the link
     Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..' LIMIT '..Config.maxAllowedRecruits..';');
     if Data_SQL ~= nil then
         repeat
             recruitAccountId = Data_SQL:GetUInt32(0)
             Data_SQL2 = CharDBQuery('SELECT `time_stamp` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..recruitAccountId..' LIMIT 1;');
             if Data_SQL2 ~= nil then linkTime = Data_SQL2:GetUInt32(0) end
-            --remove the RAF link after the period given in config
             if Config.maxRAFduration + linkTime < GetGameTime() then
                 CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´account_id` = '..recruitAccountId..';');
                 player:SendBroadcastMessage("Your Recruit-A-Friend link was removed because it timed out.")
@@ -245,16 +272,23 @@ function RAF_login(event, player)
         until not Data_SQL:NextRow()
     end
 
-
-    -- todo: add 1 full level of rested at login while in RAF with Player:SetRestBonus( restBonus )
+    
+    -- add 1 full level of rested at login while in RAF with Player:SetRestBonus( restBonus )
+    if Config.grantRested = 1 and isRecruit = 1 then
+        player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
+    end    
 
     RAF_cleanup()
     return false
 end
 
 function RAF_levelChange(event, player, oldLevel)
+    -- todo: isRecruit = 0/1
     -- todo: give reward(s) and end RAF when max level is reached
-    -- todo: add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
+    -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
+    if Config.grantRested = 1 and isRecruit = 1 then
+        player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
+    end 
 end
 
 
