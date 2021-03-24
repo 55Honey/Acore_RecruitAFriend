@@ -14,6 +14,7 @@
 --               -  adjust config in this file
 --               -  add this script to ../lua_scripts/
 --               -  write to the DB in `recruit_a_friend` from the website to add/remove links
+--                  or use the given commands
 ------------------------------------------------------------------------------------------------
 -- PLAYER GUIDE: - as the new player(RECRUIT): make yourself RECRUITED by typing ".recruitafriend bind $FriendsCharacterName"
 --               - as the new player(RECRUIT): unbind your account from a RECRUITER by typing ".recruitafriend unbind"
@@ -55,7 +56,7 @@ local PLAYER_EVENT_ON_COMMAND = 42       -- (event, player, command) - player is
 CharDBExecute('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
 CharDBExecute('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_friend` (`account_id` INT(11) NOT NULL, `recruiter_account` INT(11) DEFAULT 0, `time_stamp` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
 
-local Data_SQL
+local RAF_Data_SQL
 local RAF_row = 1
 --global table which reads the required XP per level one single time on load from the db instead of one value every levelup event
 RAF_xpPerLevel = {}
@@ -82,6 +83,12 @@ local function RAF_command(event, player, command)
     commandArray = RAF_splitString(command)
 
     if commandArray[1] == "recruitafriend" then
+        
+        if player == nil then
+            print("This command is not meant to be used from the console.")
+            RAF_cleanup()
+            return false
+        end
 
         playerAccountId = player:GetAccountId()
         --let the RECRUITED player remove the existing connection
@@ -165,6 +172,30 @@ local function RAF_command(event, player, command)
             CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend` VALUES (`'..playerAccountId..'`, `'..recruiterAccountId..'`, `'..GetGameTime()..'`);');
             RAF_cleanup()
             return false
+        elseif commandArray[2] == "summon" and commandArray[3] ~= nil then
+            -- check if the target is a recruit of the player
+            local Data_SQL2
+            local isValidRecruit = 0
+            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE ´recruiter_account` = '..playerAccountId..' LIMIT '..Config.maxAllowedRecruits..';');
+            if Data_SQL ~= nil then
+                repeat
+                    Data_SQL2 = CharDBQuery('Select `account` FROM `characters` WHERE `name` = '..commandArray[2]..';')
+                    if Data_SQL2 == nil then
+                        player:SendBroadcastMessage("The requested player does not exist. Check spelling and capitalization. Aborting.")
+                        RAF_cleanup()
+                        return false
+                    else   
+                        if Data_SQL::GetUInt32(0) ~= Data_SQL2::GetUInt32(0) then
+                            player:SendBroadcastMessage("The requested player is not your recruit. Check spelling and capitalization. Aborting.")
+                            RAF_cleanup()
+                            return false
+                        end
+                    end
+                until not Data_SQL:NextRow()
+            end
+            -- todo: do the zone/combat checks and possibly summon
+        elseif commandArray[2] == "list"
+            -- todo: print all recruits bound to this account by charname
         else
             -- print help also, if nothing matched the 2nd argument
             RAF_printHelp()
@@ -290,7 +321,9 @@ function RAF_levelChange(event, player, oldLevel)
     if Data_SQL ~= nil then
         isRecruit = 1
     end
+                    
     -- todo: give reward(s) and end RAF when max level is reached
+
     -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
     if Config.grantRested = 1 and isRecruit = 1 then
         player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
