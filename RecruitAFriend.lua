@@ -283,7 +283,13 @@ function RAF_login(event, player)
 end
 
 function RAF_levelChange(event, player, oldLevel)
-    -- todo: isRecruit = 0/1
+    local isRecruit = 0
+    local playerAccountId = player:GetAccountId()
+    local playerIP = Player:GetPlayerIP()
+    local Data_SQL = CharDBQuery('SELECT recruiter_account FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = "'..playerAccountId..'" LIMIT 1;');
+    if Data_SQL ~= nil then
+        isRecruit = 1
+    end
     -- todo: give reward(s) and end RAF when max level is reached
     -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
     if Config.grantRested = 1 and isRecruit = 1 then
