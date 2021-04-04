@@ -129,7 +129,7 @@ local function RAF_command(event, player, command)
         if commandArray[2] == "bind" then
 
             --check if this account already has other characters created on it
-            Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `account` = '..playerAccountId..' LIMIT 2;');
+            Data_SQL = CharDBQuery('SELECT `account` FROM `characters` WHERE `account` = '..playerAccountId..' LIMIT 2;');
             repeat
                 if characterGuid ~= nil and characterGuid ~= Data_SQL:GetUInt32(0) then
                     player:SendBroadcastMessage("You have more characters than this one already. Aborting.")
@@ -371,7 +371,7 @@ local function RAF_login(event, player)
     
     -- add 1 full level of rested at login while in RAF with Player:SetRestBonus( restBonus )
     if Config.grantRested == 1 and isRecruit == 1 then
-        player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
+        player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
     end    
 
     RAF_cleanup()
