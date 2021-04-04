@@ -215,12 +215,16 @@ local function RAF_command(event, player, command)
                         end
                     end
                 until not Data_SQL:NextRow()
+            else
+                player:SendBroadcastMessage("The requested player is not your recruit. Check spelling and capitalization. Aborting.")
+                RAF_cleanup()
+                return false
             end
 
             -- do the zone/combat checks and possibly summon
             local mapId = player:GetMapId()
             -- allow to proceed if the player is on one of the maps listed above
-            if has_value(Config_maps, mapId) then
+            if RAF_hasValue(Config_maps, mapId) then
                 --allow to proceed if the player is not in combat
                 if not player:IsInCombat() then
                     local group = player:GetGroup()
@@ -420,7 +424,7 @@ function RAF_splitString(inputstr, seperator)
 end
 
 
-local function RAF_hasValue (tab, val)
+function RAF_hasValue (tab, val)
     for index, value in ipairs(tab) do
         if value == val then
             return true
