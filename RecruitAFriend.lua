@@ -13,8 +13,7 @@
 -- ADMIN GUIDE:  -  compile the core with ElunaLua module
 --               -  adjust config in this file
 --               -  add this script to ../lua_scripts/
---               -  write to the DB in `recruit_a_friend` from the website to add/remove links
---                  or use the given commands
+--               -  use the given commands via SOAP from the website to add/remove links
 ------------------------------------------------------------------------------------------------
 -- PLAYER GUIDE: - as the new player(RECRUIT): make yourself RECRUITED by typing ".recruitafriend bind $FriendsCharacterName"
 --               - as the new player(RECRUIT): unbind your account from a RECRUITER by typing ".recruitafriend unbind"
@@ -36,17 +35,13 @@ Config.maxAllowedRecruits = 5
 -- set to 1 to print error messages to the console. Any other value including nil turns it off.
 Config.printErrorsToConsole = 1
 -- min GM level to bind accounts without accessing it
-Config.minGMRankForBind = 2
+Config.minGMRankForBind = 3
 -- max RAF duration in seconds. 2,592,000 = 30days
 Config.maxRAFduration = 2592000
 -- set to 1 to grant always rested. Any other value including nil turns it off.
 Config.grantRested = 1
 -- set to 1 to print a login message. Any other value including nil turns it off.
 Config.displayLoginMessage = 1
--- set to 1 to ban automatically when IP abuse is detected. Any other value including nil turns it off.
-Config.autoBan = 0
--- duration in seconds for an automatic ban
-Config.autoBanTime = 300
 -- the level which a player must reach to reward it's recruiter and automatically end RAF
 Config.targetLevel = 29
 -- allowed maps for summoning. additional maps can be added with a table.insert() line.
@@ -68,50 +63,51 @@ local PLAYER_EVENT_ON_COMMAND = 42       -- (event, player, command) - player is
 CharDBExecute('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
 CharDBExecute('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_friend` (`account_id` INT(11) NOT NULL, `recruiter_account` INT(11) DEFAULT 0, `time_stamp` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
 
-local RAF_Data_SQL
-local RAF_row = 1
 --global table which reads the required XP per level one single time on load from the db instead of one value every levelup event
 RAF_xpPerLevel = {}
+local RAF_Data_SQL
+local RAF_row = 1
 RAF_Data_SQL = WorldDBQuery('SELECT Experience FROM player_xp_for_level WHERE Level <= 80;')
-repeat
-    RAF_xpPerLevel[RAF_row] = RAF_Data_SQL:GetUInt32(0)
-    RAF_row = RAF_row + 1
-until not RAF_Data_SQL:NextRow()
+if RAF_Data_SQL ~= nil then
+    repeat
+        RAF_xpPerLevel[RAF_row] = RAF_Data_SQL:GetUInt32(0)
+        RAF_row = RAF_row + 1
+    until not RAF_Data_SQL:NextRow()
+else
+    print("Error reading player_xp_for_level from tha database.")
+end
 RAF_Data_SQL = nil
 RAF_row = nil
 
+--global table which stores all RAF links
+RAF_recruiterAccount = {}
+RAF_timeStamp = {}
+local RAF_Data_SQL
+local RAF_id
+RAF_Data_SQL = CharDBQuery('SELECT * FROM `'..Config.customDbName..'`.`recruit_a_friend`;')
+if RAF_Data_SQL ~= nil then
+    repeat
+        RAF_id = RAF_Data_SQL:GetUInt32(0)
+        RAF_recruiterAccount[RAF_id] = RAF_Data_SQL:GetUInt32(1)
+        RAF_timeStamp[RAF_id] = RAF_Data_SQL:GetUInt32(2)
+    until not RAF_Data_SQL:NextRow()
+end
+
+--todo: check all variables for reset and if actually used
 
 local function RAF_command(event, player, command)
-    local playerLevel
-    local playerAccountId
-    local recruiterAccountId
-    local recruiterName
-    local Data_SQL
-    local characterGuid
     local commandArray = {}
-    local existingRecruits
-    local playerIP
     -- split the command variable into several strings which can be compared individually
     commandArray = RAF_splitString(command)
-    if commandArray[1] == "ForceBindRAF" then
-    -- todo: add GM command to force bind from console
+    --todo: normalize strings in commandArray
 
-    elseif commandArray[1] == "recruitafriend" then
-        -- prevent use from console
-        if player == nil then
-            print("This command is not meant to be used from the console.")
-            RAF_cleanup()
-            return false
+    if commandArray[1] == "bindraf" then
+        if player:GetGMRank() >= Config.minGMRankForBind then
+            -- todo: add GM command to force bind from console
         end
 
-        playerAccountId = player:GetAccountId()
-        --let the RECRUITED player remove the existing connection
-        if commandArray[2] == "unbind" then
-            CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE `recruiter_account` = '..playerAccountId..';');
-            player:SendBroadcastMessage("Recruit a friend binding removed.")
-            RAF_cleanup()
-            return false
-        end
+    elseif commandArray[1] == "raf" then
+
 
         -- provide syntax help
         if commandArray[2] == "help" or commandArray[3] == nil then
@@ -121,105 +117,11 @@ local function RAF_command(event, player, command)
             player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
             RAF_cleanup()
             return false
-        end
 
-        characterGuid = tostring(player:GetGUID())
-        characterGuid = tonumber(characterGuid)
 
-        if commandArray[2] == "bind" then
-
-            --check if this account already has other characters created on it
-            Data_SQL = CharDBQuery('SELECT `account` FROM `characters` WHERE `account` = '..playerAccountId..' LIMIT 2;');
-            repeat
-                if characterGuid ~= nil and characterGuid ~= Data_SQL:GetUInt32(0) then
-                    player:SendBroadcastMessage("You have more characters than this one already. Aborting.")
-                    if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". More characters existing.") end
-                    RAF_cleanup()
-                    return false
-                end
-            until not Data_SQL:NextRow()
-
-            --check if the character is not higher level than allowed in config
-            playerLevel = player:GetLevel()
-            if playerLevel > Config.maxAllowedLevel then
-                player:SendBroadcastMessage("Your character is too high level already. The permitted maximum is level "..Config.maxAllowedLevel.." Aborting.")
-                if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". Too high level.") end
-                RAF_cleanup()
-                return false
-            end
-
-            -- check if the 3rd argument is a character name
-            recruiterName = commandArray[3]
-            Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `name` = "'..recruiterName..'" LIMIT 1;');
-            if Data_SQL ~= nil then
-                recruiterAccountId = Data_SQL:GetUInt32(0)
-            else
-                player:SendBroadcastMessage("The requested player does not exist. Check spelling and capitalization. Aborting.")
-                if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". Recruiter character "..recruiterName.." doesnt exist.") end
-                RAF_cleanup()
-                return false
-            end
-            
-            --check if this account is already linked
-            Data_SQL = nil
-            local Data_SQL
-            Data_SQL = CharDBQuery('SELECT `recruiter_account` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..playerAccountId..' LIMIT 1;');
-            if Data_SQL ~= nil then
-                player:SendBroadcastMessage("Your account was already bound in RAF. Aborting.")
-                if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". This account was already bound.") end
-                RAF_cleanup()
-                return false
-            end
-
-            --check if the RECRUITER account has a maximum of Config.maxAllowedRecruits
-            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = '..recruiterAccountId..' LIMIT '..Config.maxAllowedRecruits..';');
-            existingRecruits = 0
-            if Data_SQL ~= nil then
-                repeat
-                    existingRecruits = existingRecruits + 1
-                until not Data_SQL:NextRow()
-            end
-            if existingRecruits >= Config.maxAllowedRecruits then
-                player:SendBroadcastMessage("Too many RAF links on target recruiter account. Aborting.")
-                if Config.printErrorsToConsole == 1 then print("RAF bind failed from AccoundId "..playerAccountId..". Target account has too many binds.") end
-                RAF_cleanup()
-                return false
-            end
-
-            print("playerAccountId: "..playerAccountId)
-            print("recruiterAccountId: "..recruiterAccountId)
-            local GameTime = tonumber(tostring(GetGameTime()))
-            print(GameTime)
-            -- bind the accounts to each other
-            CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..playerAccountId..';');
-            CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend` VALUES ('..playerAccountId..', '..recruiterAccountId..', '..GameTime..');');
-            RAF_cleanup()
-            return false
         elseif commandArray[2] == "summon" and commandArray[3] ~= nil then
 
             -- check if the target is a recruit of the player
-            local Data_SQL2
-            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = '..playerAccountId..' AND `time_stamp` > 0 LIMIT '..Config.maxAllowedRecruits..';');
-            if Data_SQL ~= nil then
-                repeat
-                    Data_SQL2 = CharDBQuery('Select `account` FROM `characters` WHERE `name` = '..commandArray[2]..';')
-                    if Data_SQL2 == nil then
-                        player:SendBroadcastMessage("The requested player does not exist. Check spelling and capitalization. Aborting.")
-                        RAF_cleanup()
-                        return false
-                    else   
-                        if Data_SQL:GetUInt32(0) ~= Data_SQL2:GetUInt32(0) then
-                            player:SendBroadcastMessage("The requested player is not your recruit. Check spelling and capitalization. Aborting.")
-                            RAF_cleanup()
-                            return false
-                        end
-                    end
-                until not Data_SQL:NextRow()
-            else
-                player:SendBroadcastMessage("The requested player is not your recruit. Check spelling and capitalization. Aborting.")
-                RAF_cleanup()
-                return false
-            end
 
             -- do the zone/combat checks and possibly summon
             local mapId = player:GetMapId()
@@ -243,6 +145,7 @@ local function RAF_command(event, player, command)
             end
             return false
         elseif commandArray[2] == "list" then
+            --todo: replace Query with array check here
             -- print all recruits bound to this account by charname
             local Data_SQL2
             Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = '..playerAccountId..' AND `time_stamp` > 0 LIMIT '..Config.maxAllowedRecruits..';');
@@ -266,109 +169,30 @@ local function RAF_command(event, player, command)
 end
 
 local function RAF_login(event, player)
-    local playerLevel
-    local playerAccountId
-    local recruiterAccountId
-    local recruitAccountId
-    local recruiterName
-    local Data_SQL
-    local Data_SQL2
-    local characterGuid
-    local commandArray = {}
-    local existingRecruits
-    local linkTime
-    local playerIP
-    local isRecruiter
-    local isRecruit
-    
+
     -- display login message
     if Config.displayLoginMessage == 1 then
-        player:SendBroadcastMessage("This server features a Recruit-a-friend module. Type .recruitafriend for help.")
+        player:SendBroadcastMessage("This server features a Recruit-a-friend module. Type .raf for help.")
     end
     
-    -- check for the same IP when a RECRUITER logs in
-    playerAccountId = player:GetAccountId()
-    playerIP = player:GetPlayerIP()
-    Data_SQL = CharDBQuery('SELECT account_id FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = "'..playerAccountId..'" LIMIT '..Config.maxAllowedRecruits..';');
-    if Data_SQL ~= nil then
-        isRecruiter = 1
-        repeat
-            recruitAccountId = Data_SQL:GetUInt32(0)
-            DataSQL2 = AuthDBQuery('SELECT last_ip FROM `account` WHERE `id` = '..recruitAccountId..';');
-            print("A tostring(playerIP) = "..tostring(playerIP))
-            print("B tostring(Data_SQL2:GetString(0)) = "..tostring(Data_SQL2:GetString(0)))
-            if tostring(playerIP) == tostring(Data_SQL2:GetString(0)) then
-                CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE `recruiter_account` = '..playerAccountId..';');
-                player:SendBroadcastMessage("Your Recruit-A-Friend link was removed.")
-                if Config.printErrorsToConsole == 1 then print("RAF link removed due to same IP for RECRUITER "..playerAccountId..".") end
-                if config.autoBan == 1 then
-                    result = Ban(2, tostring(playerIP), Config.autoBanTime, "RAF abuse", "RAF")
-                    if Config.printErrorsToConsole == 1 then print("Automatic ban for possible IP abuse in RAF for IP "..tostring(playerIP)..".") end;
-                end
-                RAF_cleanup()
-                return false
-            end
-        until not Data_SQL:NextRow()
+    -- check for an existing RAF connection when a RECRUIT or RECRUITER logs in
+    recruiterId = RAF_recruiterAccount[player:GetAccountId()]
+    if recruiterId == nil then
+        return
     end
+
+    local playerIP = player:GetPlayerIP()
+
+    RAF_recruiterAccount = {}
+    RAF_timeStamp = {}
 
     -- check for the same IP when a RECRUIT logs in
-    playerAccountId = player:GetAccountId()
-    playerIP = player:GetPlayerIP()
-    Data_SQL = CharDBQuery('SELECT recruiter_account FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = "'..playerAccountId..'" LIMIT 1;');
-    if Data_SQL ~= nil then
-        isRecruit = 1
-        recruiterAccountId = Data_SQL:GetUInt32(0)
-        Data_SQL2 = AuthDBQuery('SELECT last_ip FROM `account` WHERE `id` = '..recruiterAccountId..';');
-        if tostring(playerIP) == tostring(Data_SQL2:GetString(0)) then
-            CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE `recruiter_account` = '..playerAccountId..';');
-            player:SendBroadcastMessage("Your Recruit-A-Friend link was removed.")
-            if Config.printErrorsToConsole == 1 then print("RAF link removed due to same IP for RECRUITER "..playerAccountId..".") end
-                if config.autoBan == 1 then
-                    result = Ban(2, tostring(playerIP), Config.autoBanTime, "RAF abuse", "RAF")
-                    if Config.printErrorsToConsole == 1 then print("Automatic ban for possible IP abuse in RAF for IP "..tostring(playerIP)..".") end;
-                end
-            RAF_cleanup()
-            return false
-        end
-    end
+    -- check for the same IP when a RECRUITER logs in
 
     -- check for RAF timeout on login of the RECRUIT, possibly remove the link
-    Data_SQL = CharDBQuery('SELECT `time_stamp` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..playerAccountId..' LIMIT 1;');
-    if Data_SQL ~= nil then
-        linkTime = Data_SQL:GetUInt32(0)
-    else
-        linkTime = 0
-    end
-    if Config.maxRAFduration + linkTime < GetGameTime() and linkTime ~= 0 then
-        CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE `account_id` = '..playerAccountId..';');
-        player:SendBroadcastMessage("Your Recruit-A-Friend link was removed because it timed out.")
-        if Config.printErrorsToConsole == 1 then print("RAF link removed due to timeout for RECRUIT "..playerAccountId..".") end
-        RAF_cleanup()
-        return false
-    end
 
     -- check for RAF timeout on login of the RECRUITER, possibly remove the link
-    Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = '..playerAccountId..' LIMIT '..Config.maxAllowedRecruits..';');
-    if Data_SQL ~= nil then
-        repeat
-            recruitAccountId = Data_SQL:GetUInt32(0)
-            Data_SQL2 = CharDBQuery('SELECT `time_stamp` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = '..recruitAccountId..' LIMIT 1;');
-            if Data_SQL2 ~= nil then
-                linkTime = Data_SQL2:GetUInt32(0)
-            else
-                linkTime = 0
-            end
-            if Config.maxRAFduration + linkTime < GetGameTime() and linkTime ~= 0 then
-                CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `time_stamp` = 0 WHERE `recruiter_account` = '..playerAccountId..';');
-                player:SendBroadcastMessage("Your Recruit-A-Friend link was removed because it timed out.")
-                if Config.printErrorsToConsole == 1 then print("RAF link removed due to timeout for RECRUIT "..recruitAccountId..".") end
-                RAF_cleanup()
-                return false
-            end
-        until not Data_SQL:NextRow()
-    end
 
-    
     -- add 1 full level of rested at login while in RAF with Player:SetRestBonus( restBonus )
     if Config.grantRested == 1 and isRecruit == 1 then
         player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
@@ -381,7 +205,7 @@ end
 local function RAF_levelChange(event, player, oldLevel)
     local isRecruit = 0
     local playerAccountId = player:GetAccountId()
-    local playerIP = player:GetPlayerIP()
+    --todo: replace db query with array check
     local Data_SQL = CharDBQuery('SELECT recruiter_account FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = "'..playerAccountId..'" AND `time_stamp` > 0 LIMIT 1;');
     if Data_SQL ~= nil then
         isRecruit = 1
@@ -397,6 +221,7 @@ end
 
 
 function RAF_cleanup()
+    --todo: remove extra  variables
     --set all variables to nil
     playerLevel = nil
     playerAccountId = nil
