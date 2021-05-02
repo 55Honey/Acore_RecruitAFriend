@@ -119,9 +119,8 @@ local function RAF_command(event, player, command)
         if player:GetGMRank() >= Config.minGMRankForBind then
             -- GM/SOAP command to force bind from console or ingame commands
             if commandArray[2] ~= nil and commandArray[3] ~= nil then
-                if commandArray[3] == tonumber(commandArray[3]) then
-                    -- todo: next line is broken. Can't get an account id from an account name
-                    local accountId = GetPlayerByName(commandArray[2]):GetAccountId()
+                if commandArray[2] == tonumber(commandArray[2]) and commandArray[3] == tonumber(commandArray[3]) then
+                    local accountId = commandArray[2]
                     RAF_recruiterAccount[accountId] = commandArray[3]
                     RAF_timeStamp[accountId] = GetGameTime()
                     CharDBExecute('DELETE * FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..accountId..';')
@@ -162,7 +161,7 @@ local function RAF_command(event, player, command)
                 player:SendBroadcastMessage("The requested player is not your recruit.")
                 return false
             end
-            --todo: check for same IP
+            --todo: check for same IP when summoning
 
             -- do the zone/combat checks and possibly summon
             local mapId = player:GetMapId()
@@ -269,7 +268,7 @@ function RAF_cleanup()
     playerAccountId = nil
     recruiterAccountId = nil
     recruitAccountId = nil
-    recruiterName = nily
+    recruiterName = nil
     Data_SQL = nil
     Data_SQL2 = nil
     characterGuid = nil
