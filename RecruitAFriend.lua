@@ -13,28 +13,24 @@
 -- ADMIN GUIDE:  -  compile the core with ElunaLua module
 --               -  adjust config in this file
 --               -  add this script to ../lua_scripts/
---               -  use the given commands via SOAP from the website to add/remove links
+--               -  use the given commands via SOAP from the website to add/remove links (requires changes to acore-cms):
+--               -  bind a recruiter: .bindraf $newRecruitId $existingRecruiterId
+--               -  players need a way to know their own account id, so they can share it
 ------------------------------------------------------------------------------------------------
--- PLAYER GUIDE: - as the new player(RECRUIT): make yourself RECRUITED by typing ".recruitafriend bind $FriendsCharacterName"
---               - as the new player(RECRUIT): unbind your account from a RECRUITER by typing ".recruitafriend unbind"
---               - as the existing player (RECRUITER): summon your friend with ".recruitafriend summon $FriendsCharacterName"
+-- PLAYER GUIDE: - as the new player(RECRUIT): make yourself RECRUITED by selecting your recruiters ID during account creation on the website
+--               - as the existing player (RECRUITER): summon your friend with ".raf summon $FriendsCharacterName"
 --               - once the RECRUIT reaches a level set in config, the RECRUITER receives a reward.
---               - same IP restricts or removes the bind (sorry families and roommates)
+--               - same IP restricts or removes the bind (sorry families, roommates and the like)
 ------------------------------------------------------------------------------------------------
-
 
 local Config = {}
 local Config_maps = {}
 
 -- Name of Eluna dB scheme
 Config.customDbName = "ac_eluna"
--- max level the ONLY character on the players account may have to become a recruit
-Config.maxAllowedLevel = 9
--- max number of simultaneous recruits
-Config.maxAllowedRecruits = 5
 -- set to 1 to print error messages to the console. Any other value including nil turns it off.
 Config.printErrorsToConsole = 1
--- min GM level to bind accounts without accessing it
+-- min GM level to bind accounts
 Config.minGMRankForBind = 3
 -- max RAF duration in seconds. 2,592,000 = 30days
 Config.maxRAFduration = 2592000
@@ -47,6 +43,7 @@ Config.targetLevel = 29
 -- maximum number of RAF related command uses before a kick. Includes summon requests.
 Config.abuseTreshold = 100
 -- allowed maps for summoning. additional maps can be added with a table.insert() line.
+-- Remove or comment all table.insert below to forbid summoning
 -- Eastern kingdoms
 table.insert(Config_maps, 0)
 -- Kalimdor
@@ -114,24 +111,39 @@ local function RAF_command(event, player, command)
     end
 
     if commandArray[1] == "bindraf" then
-        local playerAccount
+        local playerAccount = player:GetAccountId()
         if player ~= nil then
             RAF_checkAbuse(playerAccount)
         end
 
         if player:GetGMRank() >= Config.minGMRankForBind then
-            -- todo: add GM/SOAP command to force bind from console
+            -- GM/SOAP command to force bind from console or ingame commands
+            if commandArray[2] ~= nil and commandArray[3] ~= nil then
+                if commandArray[3] == tonumber(commandArray[3]) then
+                    -- todo: next line is broken. Can't get an account id from an account name
+                    local accountId = GetPlayerByName(commandArray[2]):GetAccountId()
+                    RAF_recruiterAccount[accountId] = commandArray[3]
+                    RAF_timeStamp[accountId] = GetGameTime()
+                    CharDBExecute('DELETE * FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..accountId..';')
+                    CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend` VALUES ('..accountId', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..');')
+                end
+            end
+            return false
         end
 
     elseif commandArray[1] == "raf" then
-        local playerAccount
+        local playerAccount = player:GetAccountId()
         if player ~= nil then
             RAF_checkAbuse(playerAccount)
         end
 
         -- provide syntax help
-        if commandArray[2] == "help" or commandArray[3] == nil then
-            player:SendBroadcastMessage("Syntax to stop being a recruit: .recruitafriend unbind")
+        if commandArray[2] == "list" then
+        -- print all recruits bound to this account by charname
+            player:SendBroadcastMessage("Your current recruits are: "..RAF_returnValues(RAF_recruiterAccount, player:GetAccountId, "none"))
+
+        elseif commandArray[2] == "help" or commandArray[3] == nil then
+            player:SendBroadcastMessage("Syntax to list all recruits: .raf list")
             player:SendBroadcastMessage("Syntax to summon the recruit: .raf summon $FriendsCharacterName")
             player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
             RAF_cleanup()
@@ -146,10 +158,12 @@ local function RAF_command(event, player, command)
                 player:SendBroadcastMessage("Target not found. Check spelling and capitalization.")
                 return false
             end
-            if RAF_recruiterAccount[GetPlayerByName(summonPlayer):GetAccountId()] == player:GetAccountId() then
+            if RAF_recruiterAccount[GetPlayerByName(summonPlayer):GetAccountId()] ~= player:GetAccountId() then
                 player:SendBroadcastMessage("The requested player is not your recruit.")
                 return false
             end
+            --todo: check for same IP
+
             -- do the zone/combat checks and possibly summon
             local mapId = player:GetMapId()
             -- allow to proceed if the player is on one of the maps listed above
@@ -171,22 +185,11 @@ local function RAF_command(event, player, command)
                 player:SendBroadcastMessage("Summoning is not possible here.")
             end
             return false
-        elseif commandArray[2] == "list" then
-            --todo: replace Query with array check here
-            -- print all recruits bound to this account by charname
-            local Data_SQL2
-            Data_SQL = CharDBQuery('SELECT `account_id` FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `recruiter_account` = '..playerAccountId..' AND `time_stamp` > 0 LIMIT '..Config.maxAllowedRecruits..';');
-            if Data_SQL ~= nil then
-                repeat
-                    Data_SQL2 = CharDBQuery('SELECT `name` FROM `characters` WHERE `account` = '..Data_SQL:GetUInt32(0)..';')
-                    player:SendBroadcastMessage(Data_SQL2:GetString(0))
-                until not Data_SQL:NextRow()
-            end
+
         else
             -- print help also, if nothing matched the 2nd argument
-            player:SendBroadcastMessage("Syntax to become a recruit: .recruitafriend bind $FriendsCharacterName")
-            player:SendBroadcastMessage("Syntax to stop being a recruit: .recruitafriend unbind")
-            player:SendBroadcastMessage("Syntax to summon the recruit: .recruitafriend summon $FriendsCharacterName")
+            player:SendBroadcastMessage("Syntax to list all recruits: .raf list")
+            player:SendBroadcastMessage("Syntax to summon the recruit: .raf summon $FriendsCharacterName")
             player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
             RAF_cleanup()
             return false
@@ -196,6 +199,7 @@ local function RAF_command(event, player, command)
 end
 
 local function RAF_login(event, player)
+    local accountId = player:GetAccountId()
 
     -- display login message
     if Config.displayLoginMessage == 1 then
@@ -208,23 +212,22 @@ local function RAF_login(event, player)
     -- check for an existing RAF connection when a RECRUIT or RECRUITER logs in
     recruiterId = RAF_recruiterAccount[player:GetAccountId()]
     if recruiterId == nil then
-        return
+        return false
     end
 
-    local playerIP = player:GetPlayerIP()
-
-    RAF_recruiterAccount = {}
-    RAF_timeStamp = {}
-
-    -- check for the same IP when a RECRUIT logs in
-    -- check for the same IP when a RECRUITER logs in
-
     -- check for RAF timeout on login of the RECRUIT, possibly remove the link
+    if RAF_timeStamp[accountId] == 0 then
+        return false
+    end
 
-    -- check for RAF timeout on login of the RECRUITER, possibly remove the link
+    if GetGameTime() > RAF_timeStamp[accountId] + Config.maxRAFduration then
+        RAF_timeStamp[accountId] = 0
+        CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET time_stamp = 0 WHERE `account_id` = '..accountId..';')
+        return false
+    end
 
-    -- add 1 full level of rested at login while in RAF with Player:SetRestBonus( restBonus )
-    if Config.grantRested == 1 and isRecruit == 1 then
+    -- add 1 full level of rested at login while in RAF
+    if Config.grantRested == 1 then
         player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
     end    
 
@@ -233,31 +236,40 @@ local function RAF_login(event, player)
 end
 
 local function RAF_levelChange(event, player, oldLevel)
-    local isRecruit = 0
-    local playerAccountId = player:GetAccountId()
-    --todo: replace db query with array check
-    local Data_SQL = CharDBQuery('SELECT recruiter_account FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = "'..playerAccountId..'" AND `time_stamp` > 0 LIMIT 1;');
-    if Data_SQL ~= nil then
-        isRecruit = 1
+
+    local accountId = player:GetAccountId()
+    -- check for RAF timeout on login of the RECRUIT, possibly remove the link
+    if oldLevel + 1 >= Config.targetLevel then
+        RAF_timeStamp[accountId] = 0
+        CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET time_stamp = 0 WHERE `account_id` = '..accountId..';')
+        GrantReward(RAF_recruiterAccount[accountId])
+        return false
     end
-                    
-    -- todo: give reward(s) via mail to the recruiter and end RAF when target level is reached
+
+    recruiterId = RAF_recruiterAccount[player:GetAccountId()]
+    if recruiterId == nil then
+        return false
+    end
+
+    if RAF_timeStamp[accountId] == 0 then
+        return false
+    end
 
     -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
-    if Config.grantRested == 1 and isRecruit == 1 and Config.targetLevel > oldLevel + 1 then
+    if Config.grantRested == 1 then
         player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
     end 
 end
 
 
 function RAF_cleanup()
-    --todo: remove extra  variables
+    --todo: remove extra variables
     --set all variables to nil
     playerLevel = nil
     playerAccountId = nil
     recruiterAccountId = nil
     recruitAccountId = nil
-    recruiterName = nil
+    recruiterName = nily
     Data_SQL = nil
     Data_SQL2 = nil
     characterGuid = nil
@@ -287,15 +299,34 @@ function RAF_hasValue (tab, val)
     return false
 end
 
+function RAF_returnValues(tab, val, default)
+    local returnString
+    for index, value in ipairs(tab) do
+        if value == val then
+            if returnString == nil then
+                returnString = index
+            else
+                returnString = returnString.." "..index
+            end
+        end
+    end
+    return default
+end
+
 function RAF_checkAbuse(accountId)
     if RAF_abuseCounter[accountId] > Config.abuseTreshold then
         player:KickPlayer()
-        print("RAF: account id "..accountId.." was kicked because of too many failed .raf commands.")
+        print("RAF: account id "..accountId.." was kicked because of too many .raf commands.")
     end
     RAF_abuseCounter[accountId] = RAF_AbuseCounter[accountId] + 1
+end
+
+function GrantReward(accountId)
+    -- Todo: Do something here
 end
 
 
 RegisterPlayerEvent(PLAYER_EVENT_ON_COMMAND, RAF_command)
 RegisterPlayerEvent(PLAYER_EVENT_ON_LOGIN, RAF_login)
 RegisterPlayerEvent(PLAYER_EVENT_ON_LEVEL_CHANGE, RAF_levelChange)
+
