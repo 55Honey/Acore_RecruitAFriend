@@ -31,6 +31,7 @@ Config.customDbName = "ac_eluna"
 
 -- set to 1 to print error messages to the console. Any other value including nil turns it off.
 Config.printErrorsToConsole = 1
+--todo: add if statements to console prints and remove debug prints
 
 -- min GM level to bind accounts
 Config.minGMRankForBind = 3
@@ -45,10 +46,10 @@ Config.grantRested = 1
 Config.displayLoginMessage = 1
 
 -- the level which a player must reach to reward it's recruiter and automatically end RAF
-Config.targetLevel = 29
+Config.targetLevel = 30
 
 -- maximum number of RAF related command uses before a kick. Includes summon requests.
-Config.abuseTreshold = 100
+Config.abuseTreshold = 1000
 
 -- determines if there is a check for summoner and target being on the same Ip
 Config.checkSameIp = 1
@@ -100,14 +101,20 @@ RAF_row = nil
 local RAF_Data_SQL
 local RAF_id
 RAF_Data_SQL = CharDBQuery('SELECT * FROM `'..Config.customDbName..'`.`recruit_a_friend`;')
+print("RAF_Data_SQL 2")
 if RAF_Data_SQL ~= nil then
+    print("RAF_Data_SQL 1")
     repeat
-        RAF_id = RAF_Data_SQL:GetUInt32(0)
-        RAF_recruiterAccount[RAF_id] = RAF_Data_SQL:GetUInt32(1)
+        RAF_id = tonumber(RAF_Data_SQL:GetUInt32(0))
+        RAF_recruiterAccount[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(1))
         RAF_timeStamp[RAF_id] = RAF_Data_SQL:GetUInt32(2)
         RAF_sameIpCounter[RAF_id] = RAF_Data_SQL:GetUInt32(3)
-        RAF_kickCounter[RAF_id] = RAF_Data_SQL:GetUInt32(4)
+        RAF_kickCounter[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(4))
+        print("Read id: "..RAF_id)
+        print("Read recruiter: "..RAF_recruiterAccount[RAF_id])
+        print("Read time: "..RAF_timeStamp[RAF_id])
     until not RAF_Data_SQL:NextRow()
+    print("12-1 "..RAF_recruiterAccount[12])
 else
     print("RAF: Found no linked accounts in the recruit_a_friend table. Possibly there are none yet.")
 end
@@ -115,6 +122,7 @@ end
 --todo: check all variables for reset and if actually used
 
 local function RAF_command(event, player, command)
+    print("12-2 "..RAF_recruiterAccount[12])
     local commandArray = {}
     -- split the command variable into several strings which can be compared individually
     commandArray = RAF_splitString(command)
@@ -127,44 +135,79 @@ local function RAF_command(event, player, command)
     end
 
     if commandArray[1] == "bindraf" then
-        local playerAccount = player:GetAccountId()
-        if player ~= nil then
-            RAF_checkAbuse(playerAccount)
-        end
 
         if player:GetGMRank() >= Config.minGMRankForBind then
+
             -- GM/SOAP command to force bind from console or ingame commands
             if commandArray[2] ~= nil and commandArray[3] ~= nil then
-                if commandArray[2] == tonumber(commandArray[2]) and commandArray[3] == tonumber(commandArray[3]) then
-                    local accountId = commandArray[2]
+                local accountId = tonumber(commandArray[2])
+                print("12-3 "..RAF_recruiterAccount[12])
+                print("12-4 "..accountId)
+                print("21 "..RAF_recruiterAccount[accountId])
+                if RAF_recruiterAccount[accountId] == nil then
                     RAF_recruiterAccount[accountId] = commandArray[3]
-                    RAF_timeStamp[accountId] = GetGameTime()
-                    CharDBExecute('DELETE * FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..accountId..';')
-                    CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend` VALUES ('..accountId', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..');')
+                    RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
+                    print(RAF_recruiterAccount[accountId])
+                    print(RAF_timeStamp[accountId])
+                    CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend` WHERE `account_id` = '..accountId..';')
+                    CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0);')
+                else
+                    player:SendBroadcastMessage("The selected account "..accountId.." is already recruited by "..RAF_recruiterAccount[accountId]..".")
                 end
+                print("22 "..RAF_recruiterAccount[accountId])
             end
             RAF_cleanup()
             return false
+        else
+            print("Account "..player:GetAccountId().." tried the .bindraf command without sufficient rights.")
         end
 
     elseif commandArray[1] == "raf" then
         local playerAccount = player:GetAccountId()
         if player ~= nil then
-            RAF_checkAbuse(playerAccount)
+            if RAF_checkAbuse(playerAccount) == true then
+                local recruitId
+                player:KickPlayer()
+                for index, value in pairs(RAF_recruiterAccount) do
+                    print("index: "..index)
+                    print("value: "..value)
+                    if value == playerAccount then
+                        recruitId = index
+                    end
+                end
+                print("recruitId: "..recruitId)
+                if RAF_kickCounter[recruitId] == nil then
+                    RAF_kickCounter[recruitId] = 1
+                else
+                    RAF_kickCounter[recruitId] = RAF_kickCounter[recruitId] + 1
+                    CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `kick_counter` = '..RAF_kickCounter[recruitId]..' WHERE `account_id` = '..recruitId..';')
+                    print("RAF: account id "..playerAccount.." was kicked because of too many .raf commands.")
+                end
+            end
         end
 
-        -- provide syntax help
+        -- list all accounts recruited by this account
         if commandArray[2] == "list" then
-        -- print all recruits bound to this account by charname
-            player:SendBroadcastMessage("Your current recruits are: "..RAF_returnValues(RAF_recruiterAccount, player:GetAccountId(), "none"))
-            RAF_cleanup()
-            return false
+            print("41: "..playerAccount)
+            -- print all recruits bound to this account by charname
+            local idList
+            for index, value in pairs(RAF_recruiterAccount) do
+                print("index: "..index)
+                print("value: "..value)
+                if value == playerAccount then
+                    if idList == nil then
+                        idList = index
+                    else
+                        idList = idList.." "..index
+                    end
+                end
+            end
+            if idList == nil then
+                idList = "none"
+            end
 
-        elseif commandArray[2] == "help" or commandArray[3] == nil then
-            player:SendBroadcastMessage("Your account id is: "..player:GetAccountId())
-            player:SendBroadcastMessage("Syntax to list all recruits: .raf list")
-            player:SendBroadcastMessage("Syntax to summon the recruit: .raf summon $FriendsCharacterName")
-            player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
+
+            player:SendBroadcastMessage("Your current recruits are: "..idList)
             RAF_cleanup()
             return false
 
@@ -177,12 +220,11 @@ local function RAF_command(event, player, command)
                 RAF_cleanup()
                 return false
             end
-            if RAF_recruiterAccount[GetPlayerByName(summonPlayer):GetAccountId()] ~= player:GetAccountId() then
+            if RAF_recruiterAccount[summonPlayer:GetAccountId()] ~= player:GetAccountId() then
                 player:SendBroadcastMessage("The requested player is not your recruit.")
                 RAF_cleanup()
                 return false
             end
-            --todo: check for same IP when summoning
 
             -- do the zone/combat checks and possibly summon
             local mapId = player:GetMapId()
@@ -191,11 +233,18 @@ local function RAF_command(event, player, command)
                 --allow to proceed if the player is not in combat
                 if not player:IsInCombat() then
                     local group = player:GetGroup()
+                    if group == nil then
+                        player:SendBroadcastMessage("You must me in a party or raid to summon your recruit.")
+                        return false
+                    end
                     local groupPlayers = group:GetMembers()
                     for _, v in pairs(groupPlayers) do
                         if v:GetName() == commandArray[3] then
                             if player:GetPlayerIP() == v:GetPlayerIP() and Config.checkSameIp == 1 then
                                 player:SendBroadcastMessage("Possible abuse detected. Aborting. This action is logged.")
+                                RAF_sameIpCounter[summonPlayer:GetAccountId()] = RAF_sameIpCounter[summonPlayer:GetAccountId()] + 1
+                                print(RAF_sameIpCounter[summonPlayer:GetAccountId()])
+                                CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET ip_abuse_counter = '..RAF_sameIpCounter[summonPlayer:GetAccountId()]..' WHERE `account_id` = '..summonPlayer:GetAccountId()..';')
                                 RAF_cleanup()
                                 return false
                             end
@@ -211,8 +260,8 @@ local function RAF_command(event, player, command)
             end
             return false
 
-        else
-            -- print help also, if nothing matched the 2nd argument
+        elseif commandArray[2] == "help" or commandArray[2] == nil then
+            player:SendBroadcastMessage("Your account id is: "..player:GetAccountId())
             player:SendBroadcastMessage("Syntax to list all recruits: .raf list")
             player:SendBroadcastMessage("Syntax to summon the recruit: .raf summon $FriendsCharacterName")
             player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
@@ -240,14 +289,14 @@ local function RAF_login(event, player)
         return false
     end
 
-    RAF_lastIP[accountId] = player:GetPlayerIp()
+    RAF_lastIP[accountId] = player:GetPlayerIP()
 
     -- check for RAF timeout on login of the RECRUIT, possibly remove the link
     if RAF_timeStamp[accountId] == 0 then
         return false
     end
 
-    if GetGameTime() > RAF_timeStamp[accountId] + Config.maxRAFduration then
+    if (tonumber(tostring(GetGameTime())))() > RAF_timeStamp[accountId] + Config.maxRAFduration then
         RAF_timeStamp[accountId] = 0
         CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET time_stamp = 0 WHERE `account_id` = '..accountId..';')
         return false
@@ -339,28 +388,17 @@ function RAF_hasIndex (tab, val)
     return false
 end
 
-function RAF_returnValues(tab, val, default)
-    local returnString
-    for index, value in ipairs(tab) do
-        if value == val then
-            if returnString == nil then
-                returnString = index
-            else
-                returnString = returnString.." "..index
-            end
-        end
-    end
-    return default
-end
-
 function RAF_checkAbuse(accountId)
-    if RAF_abuseCounter[accountId] > Config.abuseTreshold then
-        player:KickPlayer()
-        RAF_kickCounter[accountId] = RAF_kickCounter[accountId] + 1
-        CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend` SET `kick_counter` = '..RAF_kickCounter[accountId]..' WHERE `account_id` = '..accountId..';')
-        print("RAF: account id "..accountId.." was kicked because of too many .raf commands.")
+    if RAF_abuseCounter[accountId] == nil then
+        RAF_abuseCounter[accountId] = 1
+    else
+        RAF_abuseCounter[accountId] = RAF_abuseCounter[accountId] + 1
     end
-    RAF_abuseCounter[accountId] = RAF_AbuseCounter[accountId] + 1
+
+    if RAF_abuseCounter[accountId] > Config.abuseTreshold then
+        return true
+    end
+    return false
 end
 
 function GrantReward(accountId)
