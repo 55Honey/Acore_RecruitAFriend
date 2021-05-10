@@ -64,7 +64,8 @@ Config_rewards[4] = 56806   -- Mini Thor , Pet which is bound to account
 Config_rewards[5] =
 
 -- amount of rewards per reward_level
-tele
+
+Config_amounts[1] = 1
 Config_amounts[2] = 1
 Config_amounts[3] = 1
 Config_amounts[4] = 1
