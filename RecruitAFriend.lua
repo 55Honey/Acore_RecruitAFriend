@@ -57,19 +57,18 @@ Config.abuseTreshold = 1000
 Config.checkSameIp = 1
 
 -- rewards for certain amounts of recruits who reached the target level
-Config_rewards[1] =
+Config_rewards[1] = 39656   -- Tyrael's Hilt, Pet which is bound to account
 Config_rewards[2] =
 Config_rewards[3] =
-Config_rewards[4] =
+Config_rewards[4] = 56806   -- Mini Thor , Pet which is bound to account
 Config_rewards[5] =
 
-Config_amounts[1] = 1
+-- amount of rewards per reward_level
+tele
 Config_amounts[2] = 1
 Config_amounts[3] = 1
 Config_amounts[4] = 1
 Config_amounts[5] = 1
-
--- amount of rewards per reward_level
 
 -- allowed maps for summoning. additional maps can be added with a table.insert() line.
 -- Remove or comment all table.insert below to forbid summoning
