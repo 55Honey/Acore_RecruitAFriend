@@ -27,6 +27,8 @@ local Config = {}
 local Config_maps = {}
 local Config_rewards = {}
 local Config_amounts = {}
+local Config_defaultRewards = {}
+local Config_defaultAmounts = {}
 
 -- Name of Eluna dB scheme
 Config.customDbName = "ac_eluna"
@@ -56,22 +58,33 @@ Config.abuseTreshold = 1000
 -- determines if there is a check for summoner and target being on the same Ip
 Config.checkSameIp = 1
 
--- rewards for certain amounts of recruits who reached the target level
-Config_rewards[1] = 39656   -- Tyrael's Hilt, Pet which is bound to account
-Config_rewards[2] =
-Config_rewards[3] =
-Config_rewards[4] = 56806   -- Mini Thor , Pet which is bound to account
-Config_rewards[5] =
+-- text for the mail to send whn rewarding a recruiter
+Config.MailText = "Hello!\nYou've earned yourself a reward for introducing your friends to Chromie.\nDon't stop here, there might be more goods to gain."
+
+-- rewards towards the recruiter for certain amounts of recruits who reached the target level. If not defined for a level, send the whole set of default potions
+Config_rewards[1] = 56806   -- Mini Thor , Pet which is bound to account
+Config_rewards[3] = 14156   -- Bottomless bag - 18-slot
+Config_rewards[5] = 13584   -- Diablos Stone, Pet which is bound to account
+Config_rewards[10] = 39656   -- Tyrael's Hilt, Pet which is bound to account
 
 -- amount of rewards per reward_level
-
 Config_amounts[1] = 1
-Config_amounts[2] = 1
 Config_amounts[3] = 1
-Config_amounts[4] = 1
 Config_amounts[5] = 1
+Config_amounts[10] = 1
 
--- allowed maps for summoning. additional maps can be added with a table.insert() line.
+-- default rewards if nothing is set in Config_rewards for a certain level. May be changed. May NOT be removed
+Config_defaultRewards[1] = 9155 -- Battle elixir spellpower
+Config_defaultRewards[2] = 9187 -- Battle elixir agility
+Config_defaultRewards[3] = 9206 -- Battle elixir strength
+Config_defaultRewards[4] = 5634 -- Potion of Free Action
+
+Config_defaultAmounts[1] = 20
+Config_defaultAmounts[2] = 20
+Config_defaultAmounts[3] = 20
+Config_defaultAmounts[4] = 20
+
+-- The following are the allowed maps to summon to. Additional maps can be added with a table.insert() line.
 -- Remove or comment all table.insert below to forbid summoning
 -- Eastern kingdoms
 table.insert(Config_maps, 0)
@@ -320,14 +333,14 @@ local function RAF_login(event, player)
         player:SendBroadcastMessage("This server features a Recruit-a-friend module. Type .raf for help.")
     end
 
-    --reset abuse counter
-    RAF_abuseCounter[accountId] = 0
-    
     -- check for an existing RAF connection when a RECRUIT or RECRUITER logs in
     local recruiterId = RAF_recruiterAccount[player:GetAccountId()]
     if recruiterId == nil and RAF_hasIndex(RAF_recruiterAccount, recruiterId) == false then
         return false
     end
+
+    --reset abuse counter
+    RAF_abuseCounter[accountId] = 0
 
     RAF_lastIP[accountId] = player:GetPlayerIP()
 
@@ -383,40 +396,35 @@ local function RAF_levelChange(event, player, oldLevel)
 end
 
 function GrantReward(recruiterId)
-    -- Todo: Do something here
+
     if RAF_rewardLevel[recruiterId] == nil then
         RAF_rewardLevel[recruiterId] = 1
-        CharDBExecute('INSERT INTO IGNORE`'..Config.customDbName..'`.`recruit_a_friend_rewards` VALUES ('..recruiterId..', '..RAF_rewardLevel[recruiterId]..');')
+        CharDBExecute('DELETE * FROM '..Config.customDbName..'`.`recruit_a_friend_rewards` WHERE recruiter_account = '..recruiterId..'; INSERT INTO '..Config.customDbName..'`.`recruit_a_friend_rewards` VALUES ('..recruiterId..', '..RAF_rewardLevel[recruiterId]..');')
     else
         RAF_rewardLevel[recruiterId] = RAF_rewardLevel[recruiterId] + 1
         CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_rewards` SET reward_level = '..RAF_rewardLevel[recruiterId]..' WHERE `recruiter_account` = '..accountId..';')
     end
 
     local Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `account` = '..RAF_recruiterAccount[recruiterId]..' LIMIT 1;')
-    local recruiterCharacter = Data_SQL:GetUInt32(0)
-
-    if Config_rewards[RAF_rewardLevel[recruiterId]] == nil then
-
+    if Data_SQL ~= nil then
+        local recruiterCharacter = Data_SQL:GetUInt32(0)
     else
+        print("RAF: No character found on recruiter account with id "..recruiterId..", which was eligable for a RAF reward of level "..RAF_recruiterAccount[recruiterId]..".")
+        return
+    end
 
+    --reward the recruiter
+    if Config_rewards[RAF_rewardLevel[recruiterId]] == nil then
+        --send the default set
+        SendMail("RAF rewards", Config.MailText, recruiterCharacter, 0, 61, 0, 0, 0, Config_defaultRewards[1], Config_defaultAmounts[1], Config_defaultRewards[2], Config_defaultAmounts[2], Config_defaultRewards[3], Config_defaultAmounts[3], Config_defaultRewards[4], Config_defaultAmounts[4])
+    else
+        SendMail("RAF rewards", Config.MailText, recruiterCharacter, 0, 61, 0, 0, 0, Config_rewards[RAF_rewardLevel[recruiterId]], Config_amounts[RAF_rewardLevel[recruiterId]])
     end
 end
 
 function RAF_cleanup()
-    --todo: remove extra variables
-    --set all variables to nil
-    playerLevel = nil
-    playerAccountId = nil
-    recruiterAccountId = nil
-    recruitAccountId = nil
-    recruiterName = nil
-    Data_SQL = nil
-    Data_SQL2 = nil
-    characterGuid = nil
-    commandArray = nil
-    existingRecruits = nil
-    linkTime = nil
-    playerIP = nil
+    --todo: check variables for required cleanups
+    --set all non local runtime variables to nil
 end
 
 function RAF_splitString(inputstr, seperator)
