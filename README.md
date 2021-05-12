@@ -11,13 +11,13 @@ If the directory was not changed, add the .lua script to your `../lua_scripts/` 
 Adjust the top part of the .lua file with the config flags.
 
 ## Admin usage:
-Adjust the top part of the .lua file with the config flags. The most importan decisions are:
+Adjust the top part of the .lua file with the config flags. The most important decisions are:
 - max duration of the raf link(default 30 days)
 - target level for a succesful link and a reward to the recruiter
 - check for same IP yes/no, auto end RAF if same IP yes/no (default check:yes, end: no)
 - text for the RAF-reward mail (see Lua for defaults)
 - rewards as item id and amount (see Lua for defaults)
-- maps to allow summoning to (default Eastern Kingdoms and Kamlimdor)
+- maps to allow summoning to (default Eastern Kingdoms and Kalimdor)
 
 `.bindraf $recruit $recruiter` binds the accounts to each other. It is advised to use this from SOAP during account creation. One recruiter can have multiple recruits. Restricted by `Config.minGMRankForBind`. Once the recruit reaches the target level, the recruiter will receive a reward based on their amount of already finished recruits. Target level, item and amount for certain reward levels are all config flags.
 
