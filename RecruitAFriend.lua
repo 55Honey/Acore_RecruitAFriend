@@ -261,10 +261,12 @@ local function RAF_command(event, player, command)
             local idList
             for index, value in pairs(RAF_recruiterAccount) do
                 if value == playerAccount then
-                    if idList == nil then
-                        idList = index
-                    else
-                        idList = idList.." "..index
+                    if RAF_timeStamp[index] > 1 then
+                        if idList == nil then
+                            idList = index
+                        else
+                            idList = idList.." "..index
+                        end
                     end
                 end
             end
