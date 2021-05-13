@@ -295,6 +295,12 @@ local function RAF_command(event, player, command)
                 return false
             end
 
+            if RAF_timeStamp[summonPlayer:GetAccountId()] <= 1 then
+                player:SendBroadcastMessage("The requested player is not your recruit anymore.")
+                RAF_cleanup()
+                return false
+            end
+
             -- do the zone/combat checks and possibly summon
             local mapId = player:GetMapId()
             -- allow to proceed if the player is on one of the maps listed above
