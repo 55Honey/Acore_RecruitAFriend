@@ -195,8 +195,7 @@ local function RAF_command(event, player, command)
                 if RAF_recruiterAccount[accountId] == nil then
                     RAF_recruiterAccount[accountId] = tonumber(commandArray[3])
                     RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
-                    CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend_links` WHERE `account_id` = '..accountId..';')
-                    CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0);')
+                    CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0);')
                     if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .bindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".") end
                 else
                     player:SendBroadcastMessage("The selected account "..accountId.." is already recruited by "..RAF_recruiterAccount[accountId]..".")
@@ -222,8 +221,7 @@ local function RAF_command(event, player, command)
                 local accountId = tonumber(commandArray[2])
                 RAF_recruiterAccount[accountId] = tonumber(commandArray[3])
                 RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
-                CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend_links` WHERE `account_id` = '..accountId..';')
-                CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0);')
+                CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0);')
                 if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .forcebindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".") end
             end
             RAF_cleanup()
@@ -445,8 +443,7 @@ function GrantReward(recruiterId)
     local recruiterCharacter
     if RAF_rewardLevel[recruiterId] == nil then
         RAF_rewardLevel[recruiterId] = 1
-        CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend_rewards` WHERE recruiter_account = '..recruiterId..';')
-        CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend_rewards` VALUES ('..recruiterId..', '..RAF_rewardLevel[recruiterId]..');')
+        CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_rewards` VALUES ('..recruiterId..', '..RAF_rewardLevel[recruiterId]..');')
     else
         RAF_rewardLevel[recruiterId] = RAF_rewardLevel[recruiterId] + 1
         CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_rewards` SET reward_level = '..RAF_rewardLevel[recruiterId]..' WHERE `recruiter_account` = '..recruiterId..';')
