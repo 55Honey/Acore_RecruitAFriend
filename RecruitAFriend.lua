@@ -436,17 +436,19 @@ end
 
 function GrantReward(recruiterId)
 
+    local recruiterCharacter
     if RAF_rewardLevel[recruiterId] == nil then
         RAF_rewardLevel[recruiterId] = 1
-        CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend_rewards` WHERE recruiter_account = '..recruiterId..'; INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend_rewards` VALUES ('..recruiterId..', '..RAF_rewardLevel[recruiterId]..');')
+        CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend_rewards` WHERE recruiter_account = '..recruiterId..';')
+        CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend_rewards` VALUES ('..recruiterId..', '..RAF_rewardLevel[recruiterId]..');')
     else
         RAF_rewardLevel[recruiterId] = RAF_rewardLevel[recruiterId] + 1
-        CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_rewards` SET reward_level = '..RAF_rewardLevel[recruiterId]..' WHERE `recruiter_account` = '..accountId..';')
+        CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_rewards` SET reward_level = '..RAF_rewardLevel[recruiterId]..' WHERE `recruiter_account` = '..recruiterId..';')
     end
 
-    local Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `account` = '..RAF_recruiterAccount[recruiterId]..' LIMIT 1;')
+    local Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `account` = '..recruiterId..' LIMIT 1;')
     if Data_SQL ~= nil then
-        local recruiterCharacter = Data_SQL:GetUInt32(0)
+        recruiterCharacter = Data_SQL:GetUInt32(0)
     else
         if Config.printErrorsToConsole == 1 then print("RAF: No character found on recruiter account with id "..recruiterId..", which was eligable for a RAF reward of level "..RAF_recruiterAccount[recruiterId]..".") end
         return

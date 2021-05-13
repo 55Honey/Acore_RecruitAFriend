@@ -1,7 +1,7 @@
 ## RecruitAFriend
 Lua script for Azerothcore with ElunaLua to connect accounts from different players and reward the recruiter for bringing active players.
 
-### This repo is work in progress
+#### Find me on patreon: https://www.patreon.com/Honeys
 
 ## Requirements:
 Compile your [Azerothcore](https://github.com/azerothcore/azerothcore-wotlk) with [Eluna Lua](https://www.azerothcore.org/catalogue-details.html?id=131435473).
@@ -30,7 +30,7 @@ The RAF creates a custom db scheme specified in the config flags. Inside the sch
 
 Optionally:
 
-`.forcebindraf $recruit $recruiter` same as .bindraf but ignores past binds. Failed, succesful or timed out doesn't matter.
+`.forcebindraf $recruit $recruiter` same as .bindraf but ignores past binds. Previously unbound, succesful or timed out doesn't matter.
 
 ## Player Usage:
 - `.raf`        prints your account id and also prints help
@@ -41,8 +41,14 @@ Optionally:
 Players have 30 days (config flag) to reach the target level (default 29). If they succeed, their recruiter gets a reward. There is a counter in place and rewards change with a higher amount of succesful recruits. Default rewards are pets, a bag and potions/elixirs.
 
 
-#### Find me on patreon: https://www.patreon.com/Honeys
-
 ## Config:
+See the lua file for a description of the config flags.#
 
-See the lua file for a description of the config flags
+
+## Default settings/rewards:
+- There should be an option in the account creation page to determine a recruiter account. Recruiters can type `.raf` to find out about their account id.
+- Once connected, recruiters can summon their recruits without a limit. Abuse might lead to kicks which are logged.
+- Using the same IP for recruiter and recruit is restricted by default and also prevents teleporting and is logged.
+- Once a recruit reaches the target level of 29, their recruiter gains a reward. The default rewards are a Mini-Thor pet for the first recruit, an 18-slot bag for the second recruit, the Diablos-Stone pet for the fifth recruit and a Tyrael's Hilt pet for the 10th recruit  to reach the target level of 29. For the 4th recruit, the 6th - 9th recruit and any recruit past 10, the recruiter will receive a set of 4 stacks of potions/elixirs.
+- If the recruit fails to reach level 29 within 30 days, the RAF-link is removed at the next login.
+- If the recruit and the recruiter share an IP, they receive a warning that "possible abuse was logged" at login. If they share an IP while trying to summon, the summoning is blocked and they also see the "possible abuse was logged" message.
