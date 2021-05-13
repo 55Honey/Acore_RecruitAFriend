@@ -461,9 +461,9 @@ function GrantReward(recruiterId)
     local rewardLevel = RAF_rewardLevel[recruiterId]
     if Config_rewards[rewardLevel] == nil then
         --send the default set
-        SendMail("RAF rewards", Config.MailText, recruiterCharacter, 0, 61, 0, 0, 0, Config_defaultRewards[1], Config_defaultAmounts[1], Config_defaultRewards[2], Config_defaultAmounts[2], Config_defaultRewards[3], Config_defaultAmounts[3], Config_defaultRewards[4], Config_defaultAmounts[4])
+        SendMail("RAF reward level "..rewardLevel, Config.MailText, recruiterCharacter, 0, 61, 0, 0, 0, Config_defaultRewards[1], Config_defaultAmounts[1], Config_defaultRewards[2], Config_defaultAmounts[2], Config_defaultRewards[3], Config_defaultAmounts[3], Config_defaultRewards[4], Config_defaultAmounts[4])
     else
-        SendMail("RAF rewards", Config.MailText, recruiterCharacter, 0, 61, 0, 0, 0, Config_rewards[rewardLevel], Config_amounts[rewardLevel])
+        SendMail("RAF reward level "..rewardLevel, Config.MailText, recruiterCharacter, 0, 61, 0, 0, 0, Config_rewards[rewardLevel], Config_amounts[rewardLevel])
     end
 end
 
