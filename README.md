@@ -22,7 +22,7 @@ Adjust the top part of the .lua file with the config flags. The most important d
 `.bindraf $recruit $recruiter` binds the accounts to each other. It is advised to use this from SOAP during account creation. One recruiter can have multiple recruits. Restricted by `Config.minGMRankForBind`. Once the recruit reaches the target level, the recruiter will receive a reward based on their amount of already finished recruits. Target level, item and amount for certain reward levels are all config flags.
 
 The RAF creates a custom db scheme specified in the config flags. Inside the scheme is a table to store all current and past RAF links.
-- `time_stamp`is in UNIX-time
+- `time_stamp` is the moment of creation in UNIX-time
 - `ip_abuse_counter` is increased everytime recruiter and rectuit have the same IPs during login or summon 
 - `kick_counter` is increased everytime a player gets kicked because they reached the allowed number of actions specified in `Config.abuseTreshold`.
 - `reward_level` stores how many recruiters of that account have succesfully reached the RAF link up to `Config.targetLevel`.

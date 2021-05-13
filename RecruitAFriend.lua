@@ -197,12 +197,12 @@ local function RAF_command(event, player, command)
                     RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
                     CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend_links` WHERE `account_id` = '..accountId..';')
                     CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0);')
+                    if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .bindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".") end
                 else
                     player:SendBroadcastMessage("The selected account "..accountId.." is already recruited by "..RAF_recruiterAccount[accountId]..".")
                 end
             end
             RAF_cleanup()
-            if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .bindraf command on recruit "..accountId.." and recruiter"..RAF_recruiterAccount[accountId]..".") end
             return false
         else
             if Config.printErrorsToConsole == 1 then print("Account "..player:GetAccountId().." tried the .bindraf command without sufficient rights.") end
@@ -211,7 +211,12 @@ local function RAF_command(event, player, command)
     elseif commandArray[1] == "forcebindraf" then
 
         if player:GetGMRank() >= Config.minGMRankForBind then
-
+            local commandSource
+            if player == nil then
+                commandSource = "worldserver console"
+            else
+                commandSource = "account id: "..tostring(player:GetAccountId())
+            end
             -- GM/SOAP command to force bind from console or ingame commands
             if commandArray[2] ~= nil and commandArray[3] ~= nil then
                 local accountId = tonumber(commandArray[2])
@@ -219,9 +224,9 @@ local function RAF_command(event, player, command)
                 RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
                 CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend_links` WHERE `account_id` = '..accountId..';')
                 CharDBExecute('INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0);')
+                if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .forcebindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".") end
             end
             RAF_cleanup()
-            if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .forcebindraf command on recruit "..accountId.." and recruiter"..RAF_recruiterAccount[accountId]..".") end
             return false
         else
             if Config.printErrorsToConsole == 1 then print("Account "..player:GetAccountId().." tried the .forcebindraf command without sufficient rights.") end
@@ -374,6 +379,7 @@ local function RAF_login(event, player)
     if (tonumber(tostring(GetGameTime()))) > targetDuration then
         RAF_timeStamp[accountId] = 0
         CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 0 WHERE `account_id` = '..accountId..';')
+        player:SendBroadcastMessage("Your RAF link has reached the time-limit and expired.")
         return false
     end
 
@@ -413,6 +419,7 @@ local function RAF_levelChange(event, player, oldLevel)
         RAF_timeStamp[accountId] = 1
         CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 1 WHERE `account_id` = '..accountId..';')
         GrantReward(RAF_recruiterAccount[accountId])
+        player:SendBroadcastMessage("Your RAF link has reached the level-limit. Your recruiter has earned a reward. Go and bring your friends, too!")
         return false
     end
 
@@ -431,7 +438,7 @@ function GrantReward(recruiterId)
 
     if RAF_rewardLevel[recruiterId] == nil then
         RAF_rewardLevel[recruiterId] = 1
-        CharDBExecute('DELETE * FROM '..Config.customDbName..'`.`recruit_a_friend_rewards` WHERE recruiter_account = '..recruiterId..'; INSERT INTO '..Config.customDbName..'`.`recruit_a_friend_rewards` VALUES ('..recruiterId..', '..RAF_rewardLevel[recruiterId]..');')
+        CharDBExecute('DELETE FROM `'..Config.customDbName..'`.`recruit_a_friend_rewards` WHERE recruiter_account = '..recruiterId..'; INSERT INTO `'..Config.customDbName..'`.`recruit_a_friend_rewards` VALUES ('..recruiterId..', '..RAF_rewardLevel[recruiterId]..');')
     else
         RAF_rewardLevel[recruiterId] = RAF_rewardLevel[recruiterId] + 1
         CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_rewards` SET reward_level = '..RAF_rewardLevel[recruiterId]..' WHERE `recruiter_account` = '..accountId..';')
@@ -446,11 +453,12 @@ function GrantReward(recruiterId)
     end
 
     --reward the recruiter
-    if Config_rewards[RAF_rewardLevel[recruiterId]] == nil then
+    local rewardLevel = RAF_rewardLevel[recruiterId]
+    if Config_rewards[rewardLevel] == nil then
         --send the default set
         SendMail("RAF rewards", Config.MailText, recruiterCharacter, 0, 61, 0, 0, 0, Config_defaultRewards[1], Config_defaultAmounts[1], Config_defaultRewards[2], Config_defaultAmounts[2], Config_defaultRewards[3], Config_defaultAmounts[3], Config_defaultRewards[4], Config_defaultAmounts[4])
     else
-        SendMail("RAF rewards", Config.MailText, recruiterCharacter, 0, 61, 0, 0, 0, Config_rewards[RAF_rewardLevel[recruiterId]], Config_amounts[RAF_rewardLevel[recruiterId]])
+        SendMail("RAF rewards", Config.MailText, recruiterCharacter, 0, 61, 0, 0, 0, Config_rewards[rewardLevel], Config_amounts[rewardLevel])
     end
 end
 
