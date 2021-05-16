@@ -317,10 +317,17 @@ local function RAF_command(event, player, command)
                         if v:GetName() == commandArray[3] then
                             if player:GetPlayerIP() == v:GetPlayerIP() and Config.checkSameIp == 1 then
                                 player:SendBroadcastMessage("Possible abuse detected. Aborting. This action is logged.")
-                                RAF_sameIpCounter[summonPlayer:GetAccountId()] = RAF_sameIpCounter[summonPlayer:GetAccountId()] + 1
-                                CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET ip_abuse_counter = '..RAF_sameIpCounter[summonPlayer:GetAccountId()]..' WHERE `account_id` = '..summonPlayer:GetAccountId()..';')
-                                RAF_cleanup()
-                                return false
+                                if RAF_sameIpCounter[summonPlayer:GetAccountId()] == nil then
+                                    RAF_sameIpCounter[summonPlayer:GetAccountId()] = 1
+                                    CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET ip_abuse_counter = '..RAF_sameIpCounter[summonPlayer:GetAccountId()]..' WHERE `account_id` = '..summonPlayer:GetAccountId()..';')
+                                    RAF_cleanup()
+                                    return false
+                                else
+                                    RAF_sameIpCounter[summonPlayer:GetAccountId()] = RAF_sameIpCounter[summonPlayer:GetAccountId()] + 1
+                                    CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET ip_abuse_counter = '..RAF_sameIpCounter[summonPlayer:GetAccountId()]..' WHERE `account_id` = '..summonPlayer:GetAccountId()..';')
+                                    RAF_cleanup()
+                                    return false
+                                end
                             end
                             v:SummonPlayer(player)
                         end
@@ -397,14 +404,14 @@ local function RAF_login(event, player)
 
     -- same IP check
     local recruiterId = RAF_recruiterAccount[accountId]
-    if RAF_lastIP[accountId] == RAF_lastIP[RAF_recruiterAccount[accountId]] then
+    if RAF_lastIP[accountId] == RAF_lastIP[recruiterId] then
         if Config.EndRAFOnSameIP == 1 then
             player:SendBroadcastMessage("The RAF link was removed")
             CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 0 WHERE `account_id` = '..accountId..';')
             RAF_timeStamp[accountId] = 0
         else
             player:SendBroadcastMessage("Recruit a friend: Possible abuse detected. This action is logged.")
-            RAF_sameIpCounter[summonPlayer:GetAccountId()] = RAF_sameIpCounter[summonPlayer:GetAccountId()] + 1
+            RAF_sameIpCounter[accountId] = RAF_sameIpCounter[accountId] + 1
             CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET ip_abuse_counter = '..RAF_sameIpCounter[accountId]..' WHERE `account_id` = '..accountId..';')
         end
     end
