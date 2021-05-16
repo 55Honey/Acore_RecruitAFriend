@@ -58,10 +58,19 @@ Config.abuseTreshold = 1000
 Config.checkSameIp = 1
 
 -- set to 1 to end RAF if linked accounts share an IP. Any other value including nil turns it off.
-Config.EndRAFOnSameIP = 0
+Config.endRAFOnSameIP = 0
 
 -- text for the mail to send whn rewarding a recruiter
-Config.MailText = "Hello Adventurer!\nYou've earned a reward for introducing your friends to Chromie.\nDon't stop here, there might be more goods to gain.\n\n"
+Config.mailText = "Hello Adventurer!\nYou've earned a reward for introducing your friends to Chromie.\nDon't stop here, there might be more goods to gain.\n\n"
+
+-- modify's the mail database to prevent returning of rewards. Changes sender from character to creature. Config.senderGUID points to a creature if this is 1
+Config.preventReturn = 1
+
+-- GUID/ID of the player/creature. If Config.preventReturn = 1, you need to put creature ID. Else player GUID. 0 = No sender aka "From: Unknown".
+Config.senderGUID = 10667
+
+-- stationary used in the mail sent to the player. (41 Normal Mail, 61 GM/Blizzard Support, 62 Auction, 64 Valentines, 65 Christmas) Note: Use 62, 64, and 65 At your own risk.
+Config.mailStationery = 41
 
 -- rewards towards the recruiter for certain amounts of recruits who reached the target level. If not defined for a level, send the whole set of default potions
 Config_rewards[1] = 56806    -- Mini Thor , Pet which is bound to account
@@ -405,7 +414,7 @@ local function RAF_login(event, player)
     -- same IP check
     local recruiterId = RAF_recruiterAccount[accountId]
     if RAF_lastIP[accountId] == RAF_lastIP[recruiterId] then
-        if Config.EndRAFOnSameIP == 1 then
+        if Config.endRAFOnSameIP == 1 then
             player:SendBroadcastMessage("The RAF link was removed")
             CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 0 WHERE `account_id` = '..accountId..';')
             RAF_timeStamp[accountId] = 0
@@ -471,9 +480,16 @@ function GrantReward(recruiterId)
     local rewardLevel = RAF_rewardLevel[recruiterId]
     if Config_rewards[rewardLevel] == nil then
         --send the default set
-        SendMail("RAF reward level "..rewardLevel, Config.MailText, recruiterCharacter, 0, 61, 0, 0, 0, Config_defaultRewards[1], Config_defaultAmounts[1], Config_defaultRewards[2], Config_defaultAmounts[2], Config_defaultRewards[3], Config_defaultAmounts[3], Config_defaultRewards[4], Config_defaultAmounts[4])
+        SendMail("RAF reward level "..rewardLevel, Config.mailText, recruiterCharacter, Config.senderGUID, Config.mailStationery, 0, 0, 0, Config_defaultRewards[1], Config_defaultAmounts[1], Config_defaultRewards[2], Config_defaultAmounts[2], Config_defaultRewards[3], Config_defaultAmounts[3], Config_defaultRewards[4], Config_defaultAmounts[4])
     else
-        SendMail("RAF reward level "..rewardLevel, Config.MailText, recruiterCharacter, 0, 61, 0, 0, 0, Config_rewards[rewardLevel], Config_amounts[rewardLevel])
+        SendMail("RAF reward level "..rewardLevel, Config.mailText, recruiterCharacter, Config.senderGUID, Config.mailStationery, 0, 0, 0, Config_rewards[rewardLevel], Config_amounts[rewardLevel])
+    end
+    RAF_PreventReturn(recruiterCharacter)
+end
+
+function RAF_PreventReturn(playerGUID)
+    if Config.preventReturn == 1 then
+        CharDBExecute('UPDATE `mail` SET `messageType` = 3 WHERE `sender` = '..Config.senderGUID..' AND `receiver` = '..playerGUID..' AND `messageType` = 0;')
     end
 end
 
