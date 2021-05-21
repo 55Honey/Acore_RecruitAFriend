@@ -66,7 +66,7 @@ Config.mailText = "Hello Adventurer!\nYou've earned a reward for introducing you
 -- modify's the mail database to prevent returning of rewards. Changes sender from character to creature. Config.senderGUID points to a creature if this is 1
 Config.preventReturn = 1
 
--- GUID/ID of the player/creature. If Config.preventReturn = 1, you need to put creature ID. Else player GUID. 0 = No sender aka "From: Unknown".
+-- GUID/ID of the player/creature. If Config.preventReturn = 1, you need to put creature ID. Else player GUID. 0 = No sender aka "From: Unknown". Creature 10667 is "Chromie".
 Config.senderGUID = 10667
 
 -- stationary used in the mail sent to the player. (41 Normal Mail, 61 GM/Blizzard Support, 62 Auction, 64 Valentines, 65 Christmas) Note: Use 62, 64, and 65 At your own risk.
@@ -74,7 +74,7 @@ Config.mailStationery = 41
 
 -- rewards towards the recruiter for certain amounts of recruits who reached the target level. If not defined for a level, send the whole set of default potions
 Config_rewards[1] = 56806    -- Mini Thor , Pet which is bound to account
-Config_rewards[3] = 14156    -- Bottomless bag - 18-slot
+Config_rewards[3] = 14046    -- Runecloth Bag - 14-slot
 Config_rewards[5] = 13584    -- Diablos Stone, Pet which is bound to account
 Config_rewards[10] = 39656   -- Tyrael's Hilt, Pet which is bound to account
 
@@ -118,7 +118,7 @@ CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_f
 
 --sanity check
 if Config_defaultRewards[1] == nil or Config_defaultRewards[2] == nil or Config_defaultRewards[3] == nil or Config_defaultRewards[4] == nil then
-    print("RAF: The Config_defaultRewards value was removed for at least one flag (1-4 are required.)")
+    print("RAF: The Config_defaultRewards value was removed for at least one flag ([1]-[4] are required.)")
 end
 --INIT sequence:
 --globals:
@@ -190,57 +190,66 @@ local function RAF_command(event, player, command)
 
     if commandArray[1] == "bindraf" then
 
-        if player:GetGMRank() >= Config.minGMRankForBind then
-            local commandSource
-            if player == nil then
-                commandSource = "worldserver console"
-            else
-                commandSource = "account id: "..tostring(player:GetAccountId())
+        if player ~= nil then
+            if player:GetGMRank() < Config.minGMRankForBind then
+                if Config.printErrorsToConsole == 1 then print("Account "..player:GetAccountId().." tried the .bindraf command without sufficient rights.") end
+                return
             end
-
-            -- GM/SOAP command to bind from console or ingame commands
-            if commandArray[2] ~= nil and commandArray[3] ~= nil then
-                local accountId = tonumber(commandArray[2])
-                if RAF_recruiterAccount[accountId] == nil then
-                    RAF_recruiterAccount[accountId] = tonumber(commandArray[3])
-                    RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
-                    CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0);')
-                    if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .bindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".") end
-                else
-                    player:SendBroadcastMessage("The selected account "..accountId.." is already recruited by "..RAF_recruiterAccount[accountId]..".")
-                end
-            end
-            RAF_cleanup()
-            return false
-        else
-            if Config.printErrorsToConsole == 1 then print("Account "..player:GetAccountId().." tried the .bindraf command without sufficient rights.") end
         end
 
-    elseif commandArray[1] == "forcebindraf" then
-
-        if player:GetGMRank() >= Config.minGMRankForBind then
-            local commandSource
-            if player == nil then
-                commandSource = "worldserver console"
-            else
-                commandSource = "account id: "..tostring(player:GetAccountId())
-            end
-            -- GM/SOAP command to force bind from console or ingame commands
-            if commandArray[2] ~= nil and commandArray[3] ~= nil then
-                local accountId = tonumber(commandArray[2])
+        local commandSource
+        if player == nil then
+            commandSource = "worldserver console"
+        else
+            commandSource = "account id: "..tostring(player:GetAccountId())
+        end
+        -- GM/SOAP command to bind from console or ingame commands
+        if commandArray[2] ~= nil and commandArray[3] ~= nil then
+            local accountId = tonumber(commandArray[2])
+            if RAF_recruiterAccount[accountId] == nil then
                 RAF_recruiterAccount[accountId] = tonumber(commandArray[3])
                 RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
                 CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0);')
-                if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .forcebindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".") end
+                 if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .bindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".") end
+            else
+                player:SendBroadcastMessage("The selected account "..accountId.." is already recruited by "..RAF_recruiterAccount[accountId]..".")
             end
-            RAF_cleanup()
-            return false
-        else
-            if Config.printErrorsToConsole == 1 then print("Account "..player:GetAccountId().." tried the .forcebindraf command without sufficient rights.") end
+        end
+        RAF_cleanup()
+        return false
+
+    elseif commandArray[1] == "forcebindraf" then
+
+        if player ~= nil then
+            if player:GetGMRank() < Config.minGMRankForBind then
+                if Config.printErrorsToConsole == 1 then print("Account "..player:GetAccountId().." tried the .forcebindraf command without sufficient rights.") end
+                return
+            end
         end
 
+        local commandSource
+        if player == nil then
+            commandSource = "worldserver console"
+        else
+            commandSource = "account id: "..tostring(player:GetAccountId())
+        end
+        -- GM/SOAP command to force bind from console or ingame commands
+        if commandArray[2] ~= nil and commandArray[3] ~= nil then
+            local accountId = tonumber(commandArray[2])
+            RAF_recruiterAccount[accountId] = tonumber(commandArray[3])
+            RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
+            CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0);')
+            if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .forcebindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".") end
+        end
+        RAF_cleanup()
+        return false
+
+
     elseif commandArray[1] == "raf" then
-        if player == nil then return end
+        if player == nil then
+            print(".raf is not meant to be used from the console.")
+            return
+        end
 
         local playerAccount = player:GetAccountId()
         if player ~= nil then
