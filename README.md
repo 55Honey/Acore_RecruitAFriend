@@ -42,7 +42,7 @@ Players have 30 days (config flag) to reach the target level (default 29). If th
 
 
 ## Config:
-See the lua file for a description of the config flags.#
+See the lua file for a description of the config flags.
 
 
 ## Default settings/rewards:
