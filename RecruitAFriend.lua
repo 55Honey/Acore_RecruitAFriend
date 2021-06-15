@@ -60,7 +60,7 @@ Config.checkSameIp = 1
 -- set to 1 to end RAF if linked accounts share an IP. Any other value including nil turns it off.
 Config.endRAFOnSameIP = 0
 
--- text for the mail to send whn rewarding a recruiter
+-- text for the mail to send when rewarding a recruiter
 Config.mailText = "Hello Adventurer!\nYou've earned a reward for introducing your friends to Chromie.\nDon't stop here, there might be more goods to gain.\n\n"
 
 -- modify's the mail database to prevent returning of rewards. Changes sender from character to creature. Config.senderGUID points to a creature if this is 1
@@ -113,8 +113,8 @@ local PLAYER_EVENT_ON_LEVEL_CHANGE = 13  -- (event, player, oldLevel)
 local PLAYER_EVENT_ON_COMMAND = 42       -- (event, player, command) - player is nil if command used from console. Can return false
 
 CharDBQuery('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
-CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_friend_links` (`account_id` INT(11) NOT NULL, `recruiter_account` INT(11) DEFAULT 0, `time_stamp` INT(11) DEFAULT 0, `ip_abuse_counter` INT(11) DEFAULT 0, `kick_counter` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
-CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_friend_rewards` (`recruiter_account` INT(11) DEFAULT 0, `reward_level` INT(11) DEFAULT 0, PRIMARY KEY (`recruiter_account`) );');
+CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_friend_links` (`account_id` INT NOT NULL, `recruiter_account` INT DEFAULT 0, `time_stamp` INT DEFAULT 0, `ip_abuse_counter` INT DEFAULT 0, `kick_counter` INT DEFAULT 0, PRIMARY KEY (`account_id`) );');
+CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_friend_rewards` (`recruiter_account` INT DEFAULT 0, `reward_level` INT DEFAULT 0, PRIMARY KEY (`recruiter_account`) );');
 
 --sanity check
 if Config_defaultRewards[1] == nil or Config_defaultRewards[2] == nil or Config_defaultRewards[3] == nil or Config_defaultRewards[4] == nil then
