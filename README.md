@@ -23,7 +23,7 @@ Adjust the top part of the .lua file with the config flags. The most important d
 
 The RAF creates a custom db scheme specified in the config flags. Inside the scheme is a table to store all current and past RAF links.
 - `time_stamp` is the moment of creation in UNIX-time
-- `ip_abuse_counter` is increased everytime recruiter and rectuit have the same IPs during login or summon 
+- `ip_abuse_counter` is increased everytime recruiter and recruit have the same IPs during login or summon 
 - `kick_counter` is increased everytime a player gets kicked because they reached the allowed number of actions specified in `Config.abuseTreshold`.
 - `reward_level` stores how many recruiters of that account have succesfully reached the RAF link up to `Config.targetLevel`.
 - all other columns in `recruit_a_friend_links` and `recruit_a_friend_rewards` are account id's
@@ -49,6 +49,6 @@ See the lua file for a description of the config flags.
 - There should be an option in the account creation page to determine a recruiter account. Recruiters can type `.raf` to find out about their account id.
 - Once connected, recruiters can summon their recruits without a limit. Abuse might lead to kicks which are logged.
 - Using the same IP for recruiter and recruit is restricted by default and also prevents teleporting and is logged.
-- Once a recruit reaches the target level of 29, their recruiter gains a reward. The default rewards are a Mini-Thor pet for the first recruit, an 18-slot bag for the second recruit, the Diablos-Stone pet for the fifth recruit and a Tyrael's Hilt pet for the 10th recruit  to reach the target level of 29. For the 4th recruit, the 6th - 9th recruit and any recruit past 10, the recruiter will receive a set of 4 stacks of potions/elixirs.
+- Once a recruit reaches the target level of 29, their recruiter gains a reward. The default rewards are a Mini-Thor pet for the first recruit, a 14-slot bag for the second recruit, the Diablos-Stone pet for the fifth recruit and a Tyrael's Hilt pet for the 10th recruit  to reach the target level of 29. For the 4th recruit, the 6th - 9th recruit and any recruit past 10, the recruiter will receive a set of 4 stacks of potions/elixirs.
 - If the recruit fails to reach level 29 within 30 days, the RAF-link is removed at the next login.
 - If the recruit and the recruiter share an IP, they receive a warning that "possible abuse was logged" at login. If they share an IP while trying to summon, the summoning is blocked and they also see the "possible abuse was logged" message.
