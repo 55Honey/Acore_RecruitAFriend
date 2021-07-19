@@ -49,7 +49,7 @@ Config.grantRested = 1
 Config.displayLoginMessage = 1
 
 -- the level which a player must reach to reward it's recruiter and automatically end RAF
-Config.targetLevel = 29
+Config.targetLevel = 39
 
 -- maximum number of RAF related command uses before a kick. Includes summon requests.
 Config.abuseTreshold = 1000
@@ -90,10 +90,10 @@ Config_defaultRewards[2] = 9187   -- Battle elixir agility
 Config_defaultRewards[3] = 9206   -- Battle elixir strength
 Config_defaultRewards[4] = 5634   -- Potion of Free Action
 
-Config_defaultAmounts[1] = 20
-Config_defaultAmounts[2] = 20
-Config_defaultAmounts[3] = 20
-Config_defaultAmounts[4] = 20
+Config_defaultAmounts[1] = 10
+Config_defaultAmounts[2] = 10
+Config_defaultAmounts[3] = 10
+Config_defaultAmounts[4] = 9
 
 -- The following are the allowed maps to summon to. Additional maps can be added with a table.insert() line.
 -- Remove or comment all table.insert below to forbid summoning
