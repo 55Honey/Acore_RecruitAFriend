@@ -1,4 +1,4 @@
-## RecruitAFriend
+## lua-recruit-a-friend
 Lua script for Azerothcore with ElunaLua to connect accounts from different players and reward the recruiter for bringing active players.
 
 #### Find me on patreon: https://www.patreon.com/Honeys
