@@ -1,6 +1,7 @@
 ## lua-recruit-a-friend
 Lua script for Azerothcore with ElunaLua to connect accounts from different players and reward the recruiter for bringing active players.
 
+**Proudly hosted on [ChromieCraft](https://www.chromiecraft.com/)**
 #### Find me on patreon: https://www.patreon.com/Honeys
 
 ## Requirements:
