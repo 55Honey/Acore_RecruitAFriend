@@ -11,7 +11,7 @@ If the directory was not changed, add the .lua script to your `../lua_scripts/` 
 Adjust the top part of the .lua file with the config flags.
 
 ## Optional acore_cms support
-The [acore_cms-RAF-module](https://github.com/azerothcore/acore-cms) support this Lua. It allows to add and monitor RAF links and rewards from the website.
+The [acore_cms](https://github.com/azerothcore/acore-cms)-RAF-module support this Lua. It allows to add and monitor RAF links and rewards from the website.
 
 ## Admin usage:
 Adjust the top part of the .lua file with the config flags. The most important decisions are:
