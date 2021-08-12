@@ -327,7 +327,7 @@ local function RAF_command(event, player, command)
                 if not player:IsInCombat() then
                     local group = player:GetGroup()
                     if group == nil then
-                        player:SendBroadcastMessage("You must me in a party or raid to summon your recruit.")
+                        player:SendBroadcastMessage("You must be in a party or raid to summon your recruit.")
                         return false
                     end
                     local groupPlayers = group:GetMembers()
