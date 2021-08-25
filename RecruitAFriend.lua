@@ -313,7 +313,7 @@ local function RAF_command(event, player, command)
                 return false
             end
 
-            if RAF_timeStamp[summonPlayer:GetAccountId()] <= 1 then
+            if RAF_timeStamp[summonPlayer:GetAccountId()] == 0 or RAF_timeStamp[summonPlayer:GetAccountId()] == 1 then
                 player:SendBroadcastMessage("The requested player is not your recruit anymore.")
                 RAF_cleanup()
                 return false
@@ -333,7 +333,7 @@ local function RAF_command(event, player, command)
                     local groupPlayers = group:GetMembers()
                     for _, v in pairs(groupPlayers) do
                         if v:GetName() == commandArray[3] then
-                            if player:GetPlayerIP() == v:GetPlayerIP() and Config.checkSameIp == 1 then
+                            if player:GetPlayerIP() == v:GetPlayerIP() and Config.checkSameIp == 1 and RAF_timeStamp[summonPlayer:GetAccountId()] >= 2 then
                                 player:SendBroadcastMessage("Possible abuse detected. Aborting. This action is logged.")
                                 if RAF_sameIpCounter[summonPlayer:GetAccountId()] == nil then
                                     RAF_sameIpCounter[summonPlayer:GetAccountId()] = 1
@@ -400,7 +400,7 @@ local function RAF_login(event, player)
     end
 
     -- check for RAF timeout on login of the RECRUIT, possibly remove the link
-    if RAF_timeStamp[accountId] <= 1 then
+    if RAF_timeStamp[accountId] <= 1 and RAF_timeStamp[accountId] ~= -1 then
         return false
     end
 
@@ -442,11 +442,11 @@ local function RAF_levelChange(event, player, oldLevel)
 
     local accountId = player:GetAccountId()
     -- check for RAF timeout on login of the RECRUIT, possibly remove the link
-    if RAF_recruiterAccount[accountId] == nil or RAF_timeStamp[accountId] <= 1 then
+    if RAF_recruiterAccount[accountId] == nil or RAF_timeStamp[accountId] <= 1 and RAF_timeStamp[accountId] ~= -1 then
         return false
     end
 
-    if oldLevel + 1 >= Config.targetLevel then
+    if oldLevel + 1 >= Config.targetLevel and RAF_timeStamp[accountId] ~= -1 then
         -- set time_stamp to 1 and Grant rewards
         RAF_timeStamp[accountId] = 1
         CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 1 WHERE `account_id` = '..accountId..';')
