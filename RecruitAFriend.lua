@@ -42,7 +42,7 @@ Config.minGMRankForBind = 3
 -- max RAF duration in seconds. 2,592,000 = 30days
 Config.maxRAFduration = 2592000
 
--- set to 1 to grant always rested. Any other value including nil turns it off.
+-- set to 1 to grant recruits always rested. Any other value including nil turns it off.
 Config.grantRested = 1
 
 -- set to 1 to print a login message. Any other value including nil turns it off.
@@ -50,6 +50,9 @@ Config.displayLoginMessage = 1
 
 -- the level which a player must reach to reward it's recruiter and automatically end RAF
 Config.targetLevel = 39
+
+-- set to 1 to grant always rested for premium past Config.targetLevel. Any other value including nil turns it off.
+Config.premiumFeature = 1
 
 -- maximum number of RAF related command uses before a kick. Includes summon requests.
 Config.abuseTreshold = 1000
@@ -120,7 +123,7 @@ CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_f
 if Config_defaultRewards[1] == nil or Config_defaultRewards[2] == nil or Config_defaultRewards[3] == nil or Config_defaultRewards[4] == nil then
     print("RAF: The Config_defaultRewards value was removed for at least one flag ([1]-[4] are required.)")
 end
---INIT sequence:
+
 --globals:
 RAF_xpPerLevel = {}
 RAF_recruiterAccount = {}
@@ -131,49 +134,57 @@ RAF_kickCounter = {}
 RAF_lastIP = {}
 RAF_rewardLevel = {}
 
---global table which reads the required XP per level one single time on load from the db instead of one value every levelup event
-local RAF_Data_SQL
-local RAF_row = 1
-local RAF_Data_SQL = WorldDBQuery('SELECT Experience FROM player_xp_for_level WHERE Level <= 80;')
-if RAF_Data_SQL ~= nil then
-    repeat
-        RAF_xpPerLevel[RAF_row] = RAF_Data_SQL:GetUInt32(0)
-        RAF_row = RAF_row + 1
-    until not RAF_Data_SQL:NextRow()
-else
-    print("RAF: Error reading player_xp_for_level from tha database.")
-end
-RAF_Data_SQL = nil
-RAF_row = nil
-
---global table which stores already granted rewards
-local RAF_Data_SQL
-local RAF_id
-RAF_Data_SQL = CharDBQuery('SELECT * FROM `'..Config.customDbName..'`.`recruit_a_friend_rewards`;')
-if RAF_Data_SQL ~= nil then
-    repeat
-        RAF_id = tonumber(RAF_Data_SQL:GetUInt32(0))
-        RAF_rewardLevel[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(1))
-    until not RAF_Data_SQL:NextRow()
-else
-    print("RAF: Found no granted rewards in the recruit_a_friend_rewards table. Possibly there are none yet.")
+local function RAF_PreventReturn(playerGUID)
+    if Config.preventReturn == 1 then
+        CharDBExecute('UPDATE `mail` SET `messageType` = 3 WHERE `sender` = '..Config.senderGUID..' AND `receiver` = '..playerGUID..' AND `messageType` = 0;')
+    end
 end
 
---global table which stores all RAF links
-local RAF_Data_SQL
-local RAF_id
-RAF_Data_SQL = CharDBQuery('SELECT * FROM `'..Config.customDbName..'`.`recruit_a_friend_links`;')
+local function RAF_cleanup()
+    --todo: check variables for required cleanups
+    --set all non local runtime variables to nil
+end
 
-if RAF_Data_SQL ~= nil then
-    repeat
-        RAF_id = tonumber(RAF_Data_SQL:GetUInt32(0))
-        RAF_recruiterAccount[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(1))
-        RAF_timeStamp[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(2))
-        RAF_sameIpCounter[RAF_id] = RAF_Data_SQL:GetUInt32(3)
-        RAF_kickCounter[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(4))
-    until not RAF_Data_SQL:NextRow()
-else
-    print("RAF: Found no linked accounts in the recruit_a_friend table. Possibly there are none yet.")
+local function RAF_splitString(inputstr, seperator)
+    if seperator == nil then
+        seperator = "%s"
+    end
+    local t={}
+    for str in string.gmatch(inputstr, "([^"..seperator.."]+)") do
+        table.insert(t, str)
+    end
+    return t
+end
+
+local function RAF_hasValue (tab, val)
+    for index, value in ipairs(tab) do
+        if value == val then
+            return true
+        end
+    end
+    return false
+end
+
+local function RAF_hasIndex (tab, val)
+    for index, value in ipairs(tab) do
+        if index == val then
+            return true
+        end
+    end
+    return false
+end
+
+local function RAF_checkAbuse(accountId)
+    if RAF_abuseCounter[accountId] == nil then
+        RAF_abuseCounter[accountId] = 1
+    else
+        RAF_abuseCounter[accountId] = RAF_abuseCounter[accountId] + 1
+    end
+
+    if RAF_abuseCounter[accountId] > Config.abuseTreshold then
+        return true
+    end
+    return false
 end
 
 local function RAF_command(event, player, command)
@@ -400,8 +411,13 @@ local function RAF_login(event, player)
     end
 
     -- check for RAF timeout on login of the RECRUIT, possibly remove the link
-    if RAF_timeStamp[accountId] <= 1 and RAF_timeStamp[accountId] ~= -1 then
-        return false
+    if RAF_timeStamp[accountId] <= 1 then
+        if RAF_timeStamp[accountId] == -1 and Config.premiumFeature == 1 then
+            player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
+            return false
+        else
+            return false
+        end
     end
 
     --reset abuse counter
@@ -429,7 +445,11 @@ local function RAF_login(event, player)
             RAF_timeStamp[accountId] = 0
         else
             player:SendBroadcastMessage("Recruit a friend: Possible abuse detected. This action is logged.")
-            RAF_sameIpCounter[accountId] = RAF_sameIpCounter[accountId] + 1
+            if RAF_sameIpCounter[accountId] == nil then
+                RAF_sameIpCounter[accountId] = 1
+            else
+                RAF_sameIpCounter[accountId] = RAF_sameIpCounter[accountId] + 1
+            end
             CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET ip_abuse_counter = '..RAF_sameIpCounter[accountId]..' WHERE `account_id` = '..accountId..';')
         end
     end
@@ -438,35 +458,7 @@ local function RAF_login(event, player)
     return false
 end
 
-local function RAF_levelChange(event, player, oldLevel)
-
-    local accountId = player:GetAccountId()
-    -- check for RAF timeout on login of the RECRUIT, possibly remove the link
-    if RAF_recruiterAccount[accountId] == nil or RAF_timeStamp[accountId] <= 1 and RAF_timeStamp[accountId] ~= -1 then
-        return false
-    end
-
-    if oldLevel + 1 >= Config.targetLevel and RAF_timeStamp[accountId] ~= -1 then
-        -- set time_stamp to 1 and Grant rewards
-        RAF_timeStamp[accountId] = 1
-        CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 1 WHERE `account_id` = '..accountId..';')
-        GrantReward(RAF_recruiterAccount[accountId])
-        player:SendBroadcastMessage("Your RAF link has reached the level-limit. Your recruiter has earned a reward. Go and bring your friends, too!")
-        return false
-    end
-
-    local recruiterId = RAF_recruiterAccount[accountId]
-    if recruiterId == nil then
-        return false
-    end
-
-     -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
-    if Config.grantRested == 1 then
-        player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
-    end 
-end
-
-function GrantReward(recruiterId)
+local function GrantReward(recruiterId)
 
     local recruiterCharacter
     if RAF_rewardLevel[recruiterId] == nil then
@@ -496,57 +488,83 @@ function GrantReward(recruiterId)
     RAF_PreventReturn(recruiterCharacter)
 end
 
-function RAF_PreventReturn(playerGUID)
-    if Config.preventReturn == 1 then
-        CharDBExecute('UPDATE `mail` SET `messageType` = 3 WHERE `sender` = '..Config.senderGUID..' AND `receiver` = '..playerGUID..' AND `messageType` = 0;')
-    end
-end
+local function RAF_levelChange(event, player, oldLevel)
 
-function RAF_cleanup()
-    --todo: check variables for required cleanups
-    --set all non local runtime variables to nil
-end
-
-function RAF_splitString(inputstr, seperator)
-    if seperator == nil then
-        seperator = "%s"
-    end
-    local t={}
-    for str in string.gmatch(inputstr, "([^"..seperator.."]+)") do
-        table.insert(t, str)
-    end
-    return t
-end
-
-function RAF_hasValue (tab, val)
-    for index, value in ipairs(tab) do
-        if value == val then
-            return true
+    local accountId = player:GetAccountId()
+    -- check for RAF timeout on login of the RECRUIT, possibly remove the link
+    if RAF_recruiterAccount[accountId] == nil or RAF_timeStamp[accountId] <= 1 then
+        if RAF_timeStamp[accountId] == -1 and Config.premiumFeature == 1 then
+            player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
+            return false
+        else
+            return false
         end
     end
-    return false
+
+    if oldLevel + 1 >= Config.targetLevel then
+        -- set time_stamp to 1 and Grant rewards
+        RAF_timeStamp[accountId] = 1
+        CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 1 WHERE `account_id` = '..accountId..';')
+        GrantReward(RAF_recruiterAccount[accountId])
+        player:SendBroadcastMessage("Your RAF link has reached the level-limit. Your recruiter has earned a reward. Go and bring your friends, too!")
+        return false
+    end
+
+    local recruiterId = RAF_recruiterAccount[accountId]
+    if recruiterId == nil then
+        return false
+    end
+
+     -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
+    if Config.grantRested == 1 then
+        player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
+    end 
 end
 
-function RAF_hasIndex (tab, val)
-    for index, value in ipairs(tab) do
-        if index == val then
-            return true
-        end
-    end
-    return false
+--INIT sequence:
+--global table which reads the required XP per level one single time on load from the db instead of one value every levelup event
+local RAF_Data_SQL
+local RAF_row = 1
+local RAF_Data_SQL = WorldDBQuery('SELECT Experience FROM player_xp_for_level WHERE Level <= 80;')
+if RAF_Data_SQL ~= nil then
+    repeat
+        RAF_xpPerLevel[RAF_row] = RAF_Data_SQL:GetUInt32(0)
+        RAF_row = RAF_row + 1
+    until not RAF_Data_SQL:NextRow()
+else
+    print("RAF: Error reading player_xp_for_level from tha database.")
+end
+RAF_Data_SQL = nil
+RAF_row = nil
+
+--global table which stores already granted rewards
+local RAF_Data_SQL
+local RAF_id
+RAF_Data_SQL = CharDBQuery('SELECT * FROM `'..Config.customDbName..'`.`recruit_a_friend_rewards`;')
+if RAF_Data_SQL ~= nil then
+    repeat
+        RAF_id = tonumber(RAF_Data_SQL:GetUInt32(0))
+        RAF_rewardLevel[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(1))
+    until not RAF_Data_SQL:NextRow()
+else
+    print("RAF: Found no granted rewards in the recruit_a_friend_rewards table. Possibly there are none yet.")
 end
 
-function RAF_checkAbuse(accountId)
-    if RAF_abuseCounter[accountId] == nil then
-        RAF_abuseCounter[accountId] = 1
-    else
-        RAF_abuseCounter[accountId] = RAF_abuseCounter[accountId] + 1
-    end
+--global table which stores all RAF links
+local RAF_Data_SQL
+local RAF_id
+RAF_Data_SQL = CharDBQuery('SELECT * FROM `'..Config.customDbName..'`.`recruit_a_friend_links`;')
 
-    if RAF_abuseCounter[accountId] > Config.abuseTreshold then
-        return true
-    end
-    return false
+if RAF_Data_SQL ~= nil then
+    repeat
+        RAF_id = tonumber(RAF_Data_SQL:GetUInt32(0))
+        RAF_recruiterAccount[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(1))
+        RAF_timeStamp[RAF_id] = tonumber(RAF_Data_SQL:GetInt32(2))
+        RAF_sameIpCounter[RAF_id] = RAF_Data_SQL:GetUInt32(3)
+        RAF_kickCounter[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(4))
+    until not RAF_Data_SQL:NextRow()
+else
+    print("RAF: Found no linked accounts in the recruit_a_friend table. Possibly there are none yet.")
 end
 
 RegisterPlayerEvent(PLAYER_EVENT_ON_COMMAND, RAF_command)
