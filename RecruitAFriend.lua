@@ -60,7 +60,7 @@ Config.abuseTreshold = 1000
 -- determines if there is a check for summoner and target being on the same Ip
 Config.checkSameIp = 1
 
--- set to 1 to end RAF if linked accounts share an IP. Any other value including nil turns it off.
+-- set to 1 to end RAF if linked accounts share an IP on the first infraction. Any other value including nil turns it off.
 Config.endRAFOnSameIP = 0
 
 -- text for the mail to send when rewarding a recruiter
@@ -74,6 +74,9 @@ Config.senderGUID = 10667
 
 -- stationary used in the mail sent to the player. (41 Normal Mail, 61 GM/Blizzard Support, 62 Auction, 64 Valentines, 65 Christmas) Note: Use 62, 64, and 65 At your own risk.
 Config.mailStationery = 41
+
+-- should links on the same IP be removed automatically on startup / reload?
+Config.AutoKillSameIPLinks = 1
 
 -- rewards towards the recruiter for certain amounts of recruits who reached the target level. If not defined for a level, send the whole set of default potions
 Config_rewards[1] = 56806    -- Mini Thor , Pet which is bound to account
@@ -111,6 +114,7 @@ table.insert(Config_maps, 1)
 ------------------------------------------
 -- NO ADJUSTMENTS REQUIRED BELOW THIS LINE
 ------------------------------------------
+
 local PLAYER_EVENT_ON_LOGIN = 3          -- (event, player)
 local PLAYER_EVENT_ON_LEVEL_CHANGE = 13  -- (event, player, oldLevel)
 local PLAYER_EVENT_ON_COMMAND = 42       -- (event, player, command) - player is nil if command used from console. Can return false
@@ -122,6 +126,10 @@ CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_f
 --sanity check
 if Config_defaultRewards[1] == nil or Config_defaultRewards[2] == nil or Config_defaultRewards[3] == nil or Config_defaultRewards[4] == nil then
     print("RAF: The Config_defaultRewards value was removed for at least one flag ([1]-[4] are required.)")
+end
+
+if Config.AutoKillSameIPLinks == 1 then
+    CharDBQuery('UPDATE `'..Config.customDbName..'`.recruit_a_friend_links SET time_stamp = 0 WHERE ip_abuse_counter > 5 AND time_stamp > 1;')
 end
 
 --globals:
