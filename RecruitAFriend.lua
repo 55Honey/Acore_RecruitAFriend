@@ -382,7 +382,7 @@ local function RAF_command(event, player, command)
             if player == nil then return end
 
             local accountId = player:GetAccountId()
-            if RAF_recruiterAccount[accountId] ~= nil then
+            if RAF_recruiterAccount[accountId] ~= nil and RAF_timeStamp[accountId] > 1 then
                 RAF_timeStamp[accountId] = 0
                 CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 0 WHERE `account_id` = '..accountId..';')
                 player:SendBroadcastMessage("Your Recruit-a-friend link was removed by choice.")
