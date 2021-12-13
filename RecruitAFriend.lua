@@ -49,7 +49,7 @@ Config.grantRested = 1
 Config.displayLoginMessage = 1
 
 -- the level which a player must reach to reward it's recruiter and automatically end RAF
-Config.targetLevel = 49
+Config.targetLevel = 55
 
 -- set to 1 to grant always rested for premium past Config.targetLevel. Any other value including nil turns it off.
 Config.premiumFeature = 0
