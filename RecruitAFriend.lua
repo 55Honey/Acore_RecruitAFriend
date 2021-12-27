@@ -200,6 +200,10 @@ local function RAF_command(event, player, command)
     -- split the command variable into several strings which can be compared individually
     commandArray = RAF_splitString(command)
 
+    if commandArray[1] ~= "bindraf" and commandArray[1] ~= "forcebindraf" and commandArray[1] ~= "raf" then
+        return
+    end
+
     if commandArray[2] ~= nil then
         commandArray[2] = commandArray[2]:gsub("[';\\, ]", "")
         if commandArray[3] ~= nil then
@@ -267,7 +271,7 @@ local function RAF_command(event, player, command)
     elseif commandArray[1] == "raf" then
         if player == nil then
             print(".raf is not meant to be used from the console.")
-            return
+            return false
         end
 
         local playerAccount = player:GetAccountId()
