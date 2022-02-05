@@ -324,9 +324,9 @@ local function RAF_command(event, player, command)
             if player == nil then return end
 
             -- check if the target is a recruit of the player
-            local summonPlayer = GetPlayerByName(commandArray[3])
+            local summonPlayer = GetPlayerByName(commandArray[3]:gsub("^%l", string.upper))
             if summonPlayer == nil then
-                player:SendBroadcastMessage("Target not found. Check spelling and capitalization.")
+                player:SendBroadcastMessage("Target not found. Please check spelling.")
                 RAF_cleanup()
                 return false
             end
