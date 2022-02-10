@@ -125,7 +125,7 @@ CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`recruit_a_f
 
 --sanity check
 if Config_defaultRewards[1] == nil or Config_defaultRewards[2] == nil or Config_defaultRewards[3] == nil or Config_defaultRewards[4] == nil then
-    print("RAF: The Config_defaultRewards value was removed for at least one flag ([1]-[4] are required.)")
+    PrintError("RAF: The Config_defaultRewards value was removed for at least one flag ([1]-[4] are required.)")
 end
 
 if Config.AutoKillSameIPLinks == 1 then
@@ -195,7 +195,7 @@ local function RAF_checkAbuse(accountId)
     return false
 end
 
-local function RAF_command(event, player, command)
+local function RAF_command(event, player, command, chatHandler)
     local commandArray = {}
     -- split the command variable into several strings which can be compared individually
     commandArray = RAF_splitString(command)
@@ -215,7 +215,7 @@ local function RAF_command(event, player, command)
 
         if player ~= nil then
             if player:GetGMRank() < Config.minGMRankForBind then
-                if Config.printErrorsToConsole == 1 then print("Account "..player:GetAccountId().." tried the .bindraf command without sufficient rights.") end
+                if Config.printErrorsToConsole == 1 then PrintInfo("Account "..player:GetAccountId().." tried the .bindraf command without sufficient rights.") end
                 return
             end
         end
@@ -233,9 +233,9 @@ local function RAF_command(event, player, command)
                 RAF_recruiterAccount[accountId] = tonumber(commandArray[3])
                 RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
                 CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0, "");')
-                 if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .bindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".") end
+                chatHandler:SendSysMessage(commandSource.." has succesfully used the .bindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".")
             else
-                player:SendBroadcastMessage("The selected account "..accountId.." is already recruited by "..RAF_recruiterAccount[accountId]..".")
+                chatHandler:SendSysMessage("The selected account "..accountId.." is already recruited by "..RAF_recruiterAccount[accountId]..".")
             end
         end
         RAF_cleanup()
@@ -245,7 +245,7 @@ local function RAF_command(event, player, command)
 
         if player ~= nil then
             if player:GetGMRank() < Config.minGMRankForBind then
-                if Config.printErrorsToConsole == 1 then print("Account "..player:GetAccountId().." tried the .forcebindraf command without sufficient rights.") end
+                if Config.printErrorsToConsole == 1 then PrintInfo("Account "..player:GetAccountId().." tried the .forcebindraf command without sufficient rights.") end
                 return
             end
         end
@@ -262,7 +262,7 @@ local function RAF_command(event, player, command)
             RAF_recruiterAccount[accountId] = tonumber(commandArray[3])
             RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
             CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0, "");')
-            if Config.printErrorsToConsole == 1 then print(commandSource.." has succesfully used the .forcebindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".") end
+            chatHandler:SendSysMessage(commandSource.." has succesfully used the .forcebindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".")
         end
         RAF_cleanup()
         return false
@@ -270,7 +270,7 @@ local function RAF_command(event, player, command)
 
     elseif commandArray[1] == "raf" then
         if player == nil then
-            print(".raf is not meant to be used from the console.")
+            chatHandler:SendSysMessage(".raf is not meant to be used from the console.")
             return false
         end
 
@@ -289,7 +289,7 @@ local function RAF_command(event, player, command)
                 else
                     RAF_kickCounter[recruitId] = RAF_kickCounter[recruitId] + 1
                     CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET `kick_counter` = '..RAF_kickCounter[recruitId]..' WHERE `account_id` = '..recruitId..';')
-                    if Config.printErrorsToConsole == 1 then print("RAF: account id "..playerAccount.." was kicked because of too many .raf commands.") end
+                    if Config.printErrorsToConsole == 1 then PrintError("RAF: account id "..playerAccount.." was kicked because of too many .raf commands.") end
                 end
             end
         end
@@ -316,7 +316,7 @@ local function RAF_command(event, player, command)
             end
 
 
-            player:SendBroadcastMessage("Your current recruits are: "..idList)
+            chatHandler:SendSysMessage("Your current recruits are: "..idList)
             RAF_cleanup()
             return false
 
@@ -326,18 +326,18 @@ local function RAF_command(event, player, command)
             -- check if the target is a recruit of the player
             local summonPlayer = GetPlayerByName(commandArray[3])
             if summonPlayer == nil then
-                player:SendBroadcastMessage("Target not found. Check spelling and capitalization.")
+                chatHandler:SendSysMessage("Target not found. Check spelling and capitalization.")
                 RAF_cleanup()
                 return false
             end
             if RAF_recruiterAccount[summonPlayer:GetAccountId()] ~= player:GetAccountId() then
-                player:SendBroadcastMessage("The requested player is not your recruit.")
+                chatHandler:SendSysMessage("The requested player is not your recruit.")
                 RAF_cleanup()
                 return false
             end
 
             if RAF_timeStamp[summonPlayer:GetAccountId()] == 0 or RAF_timeStamp[summonPlayer:GetAccountId()] == 1 then
-                player:SendBroadcastMessage("The requested player is not your recruit anymore.")
+                chatHandler:SendSysMessage("The requested player is not your recruit anymore.")
                 RAF_cleanup()
                 return false
             end
@@ -350,14 +350,14 @@ local function RAF_command(event, player, command)
                 if not player:IsInCombat() then
                     local group = player:GetGroup()
                     if group == nil then
-                        player:SendBroadcastMessage("You must be in a party or raid to summon your recruit.")
+                        chatHandler:SendSysMessage("You must be in a party or raid to summon your recruit.")
                         return false
                     end
                     local groupPlayers = group:GetMembers()
                     for _, v in pairs(groupPlayers) do
                         if v:GetName() == commandArray[3] then
                             if player:GetPlayerIP() == v:GetPlayerIP() and Config.checkSameIp == 1 and RAF_timeStamp[summonPlayer:GetAccountId()] >= 2 then
-                                player:SendBroadcastMessage("Possible abuse detected. Aborting. This action is logged.")
+                                chatHandler:SendSysMessage("Possible abuse detected. Aborting. This action is logged.")
                                 if RAF_sameIpCounter[summonPlayer:GetAccountId()] == nil then
                                     RAF_sameIpCounter[summonPlayer:GetAccountId()] = 1
                                     CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET ip_abuse_counter = '..RAF_sameIpCounter[summonPlayer:GetAccountId()]..' WHERE `account_id` = '..summonPlayer:GetAccountId()..';')
@@ -374,32 +374,35 @@ local function RAF_command(event, player, command)
                         end
                     end
                 else
-                    player:SendBroadcastMessage("Summoning is not possible in combat.")
+                    chatHandler:SendSysMessage("Summoning is not possible in combat.")
                 end
                 return false
             else
-                player:SendBroadcastMessage("Summoning is not possible here.")
+                chatHandler:SendSysMessage("Summoning is not possible here.")
             end
             return false
 
         elseif commandArray[2] == "unbind" and commandArray[3] == nil then
-            if player == nil then return end
+            if player == nil then
+                chatHandler:SendSysMessage("Console can not have recruits to remove.")
+                return
+            end
 
             local accountId = player:GetAccountId()
             if RAF_recruiterAccount[accountId] ~= nil and RAF_timeStamp[accountId] > 1 then
                 RAF_timeStamp[accountId] = 0
                 CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 0 WHERE `account_id` = '..accountId..';')
-                player:SendBroadcastMessage("Your Recruit-a-friend link was removed by choice.")
+                chatHandler:SendSysMessage("Your Recruit-a-friend link was removed by choice.")
                 return false
             end
 
         elseif commandArray[2] == "help" or commandArray[2] == nil then
             if player == nil then return end
 
-            player:SendBroadcastMessage("Your account id is: "..player:GetAccountId())
-            player:SendBroadcastMessage("Syntax to list all recruits: .raf list")
-            player:SendBroadcastMessage("Syntax to summon the recruit: .raf summon $FriendsCharacterName")
-            player:SendBroadcastMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
+            chatHandler:SendSysMessage("Your account id is: "..player:GetAccountId())
+            chatHandler:SendSysMessage("Syntax to list all recruits: .raf list")
+            chatHandler:SendSysMessage("Syntax to summon the recruit: .raf summon $FriendsCharacterName")
+            chatHandler:SendSysMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
             RAF_cleanup()
             return false
         end
@@ -485,7 +488,7 @@ local function GrantReward(recruiterId)
     if Data_SQL ~= nil then
         recruiterCharacter = Data_SQL:GetUInt32(0)
     else
-        if Config.printErrorsToConsole == 1 then print("RAF: No character found on recruiter account with id "..recruiterId..", which was eligable for a RAF reward of level "..RAF_recruiterAccount[recruiterId]..".") end
+        if Config.printErrorsToConsole == 1 then PrintError("RAF: No character found on recruiter account with id "..recruiterId..", which was eligable for a RAF reward of level "..RAF_recruiterAccount[recruiterId]..".") end
         return
     end
 
@@ -544,7 +547,7 @@ if RAF_Data_SQL ~= nil then
         RAF_row = RAF_row + 1
     until not RAF_Data_SQL:NextRow()
 else
-    print("RAF: Error reading player_xp_for_level from tha database.")
+    PrintError("RAF: Error reading player_xp_for_level from tha database.")
 end
 RAF_Data_SQL = nil
 RAF_row = nil
@@ -559,7 +562,7 @@ if RAF_Data_SQL ~= nil then
         RAF_rewardLevel[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(1))
     until not RAF_Data_SQL:NextRow()
 else
-    print("RAF: Found no granted rewards in the recruit_a_friend_rewards table. Possibly there are none yet.")
+    PrintError("RAF: Found no granted rewards in the recruit_a_friend_rewards table. Possibly there are none yet.")
 end
 
 --global table which stores all RAF links
@@ -576,7 +579,7 @@ if RAF_Data_SQL ~= nil then
         RAF_kickCounter[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(4))
     until not RAF_Data_SQL:NextRow()
 else
-    print("RAF: Found no linked accounts in the recruit_a_friend table. Possibly there are none yet.")
+    PrintError("RAF: Found no linked accounts in the recruit_a_friend table. Possibly there are none yet.")
 end
 
 RegisterPlayerEvent(PLAYER_EVENT_ON_COMMAND, RAF_command)
