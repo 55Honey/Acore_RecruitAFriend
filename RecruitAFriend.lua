@@ -237,6 +237,9 @@ local function RAF_command(event, player, command, chatHandler)
             else
                 chatHandler:SendSysMessage("The selected account "..accountId.." is already recruited by "..RAF_recruiterAccount[accountId]..".")
             end
+        else
+            chatHandler:SendSysMessage("Admin/GM Syntax: .bindraf $recruit $recruiter binds the accounts to each other.")
+            chatHandler:SendSysMessage("Admin/GM Syntax: .forcebindraf $recruit $recruiter same as .bindraf but ignores past binds. Previously unbound, succesful or timed out doesn't matter.")
         end
         RAF_cleanup()
         return false
@@ -263,24 +266,22 @@ local function RAF_command(event, player, command, chatHandler)
             RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
             CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0, "");')
             chatHandler:SendSysMessage(commandSource.." has succesfully used the .forcebindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".")
+        else
+            chatHandler:SendSysMessage("Admin/GM Syntax: .bindraf $recruit $recruiter binds the accounts to each other.")
+            chatHandler:SendSysMessage("Admin/GM Syntax: .forcebindraf $recruit $recruiter same as .bindraf but ignores past binds. Previously unbound, succesful or timed out doesn't matter.")
         end
         RAF_cleanup()
         return false
 
 
     elseif commandArray[1] == "raf" then
-        if player == nil then
-            chatHandler:SendSysMessage(".raf is not meant to be used from the console.")
-            return false
-        end
 
-        local playerAccount = player:GetAccountId()
         if player ~= nil then
-            if RAF_checkAbuse(playerAccount) == true then
+            if RAF_checkAbuse(player:GetAccountId()) == true then
                 local recruitId
                 player:KickPlayer()
                 for index, value in pairs(RAF_recruiterAccount) do
-                    if value == playerAccount then
+                    if value == player:GetAccountId() then
                         recruitId = index
                     end
                 end
@@ -289,19 +290,23 @@ local function RAF_command(event, player, command, chatHandler)
                 else
                     RAF_kickCounter[recruitId] = RAF_kickCounter[recruitId] + 1
                     CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET `kick_counter` = '..RAF_kickCounter[recruitId]..' WHERE `account_id` = '..recruitId..';')
-                    if Config.printErrorsToConsole == 1 then PrintError("RAF: account id "..playerAccount.." was kicked because of too many .raf commands.") end
+                    if Config.printErrorsToConsole == 1 then PrintError("RAF: account id "..player:GetAccountId().." was kicked because of too many .raf commands.") end
                 end
             end
         end
 
         -- list all accounts recruited by this account
         if commandArray[2] == "list" then
-            if player == nil then return end
+
+            if player == nil then
+                chatHandler:SendSysMessage("'.raf list' is not meant to be used from the console.")
+                return false
+            end
 
             -- print all recruits bound to this account by charname
             local idList
             for index, value in pairs(RAF_recruiterAccount) do
-                if value == playerAccount then
+                if value == player:GetAccountId() then
                     if RAF_timeStamp[index] > 1 then
                         if idList == nil then
                             idList = index
@@ -320,8 +325,18 @@ local function RAF_command(event, player, command, chatHandler)
             RAF_cleanup()
             return false
 
-        elseif commandArray[2] == "summon" and commandArray[3] ~= nil and player ~= nil then
-            if player == nil then return end
+        elseif commandArray[2] == "summon" then
+            if player == nil then
+                chatHandler:SendSysMessage("'.raf summon' is not meant to be used from the console.")
+                return false
+            end
+
+            if commandArray[3] == nil then
+                chatHandler:SendSysMessage("'.raf summon' requires the name of the target. Use '.raf summon $Name'")
+                return false
+            else
+                commandArray[3] = commandArray[3]:gsub("^%l", string.upper)
+            end
 
             -- check if the target is a recruit of the player
             local summonPlayer = GetPlayerByName(commandArray[3])
@@ -330,6 +345,7 @@ local function RAF_command(event, player, command, chatHandler)
                 RAF_cleanup()
                 return false
             end
+
             if RAF_recruiterAccount[summonPlayer:GetAccountId()] ~= player:GetAccountId() then
                 chatHandler:SendSysMessage("The requested player is not your recruit.")
                 RAF_cleanup()
@@ -385,7 +401,7 @@ local function RAF_command(event, player, command, chatHandler)
         elseif commandArray[2] == "unbind" and commandArray[3] == nil then
             if player == nil then
                 chatHandler:SendSysMessage("Console can not have recruits to remove.")
-                return
+                return false
             end
 
             local accountId = player:GetAccountId()
@@ -397,9 +413,13 @@ local function RAF_command(event, player, command, chatHandler)
             end
 
         elseif commandArray[2] == "help" or commandArray[2] == nil then
-            if player == nil then return end
+            if player == nil then
+                chatHandler:SendSysMessage("Admin/GM Syntax: .bindraf $recruit $recruiter binds the accounts to each other.")
+                chatHandler:SendSysMessage("Admin/GM Syntax: .forcebindraf $recruit $recruiter same as .bindraf but ignores past binds. Previously unbound, succesful or timed out doesn't matter.")
+            else
+                chatHandler:SendSysMessage("Your account id is: "..player:GetAccountId())
+            end
 
-            chatHandler:SendSysMessage("Your account id is: "..player:GetAccountId())
             chatHandler:SendSysMessage("Syntax to list all recruits: .raf list")
             chatHandler:SendSysMessage("Syntax to summon the recruit: .raf summon $FriendsCharacterName")
             chatHandler:SendSysMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
