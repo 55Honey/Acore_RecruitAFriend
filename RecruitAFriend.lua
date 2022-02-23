@@ -409,8 +409,11 @@ local function RAF_command(event, player, command, chatHandler)
                 RAF_timeStamp[accountId] = 0
                 CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 0 WHERE `account_id` = '..accountId..';')
                 chatHandler:SendSysMessage("Your Recruit-a-friend link was removed by choice.")
-                return false
+            else
+                chatHandler:SendSysMessage("Your account is not recruited (anymore).")
             end
+
+            return false
 
         elseif commandArray[2] == "help" or commandArray[2] == nil then
             if player == nil then
