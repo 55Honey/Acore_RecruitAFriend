@@ -39,6 +39,9 @@ Config.printErrorsToConsole = 1
 -- min GM level to bind accounts
 Config.minGMRankForBind = 3
 
+-- min GM level to read data
+Config.minGMRankForRead = 2
+
 -- max RAF duration in seconds. 2,592,000 = 30days
 Config.maxRAFduration = 2592000
 
@@ -428,6 +431,32 @@ local function RAF_command(event, player, command, chatHandler)
             chatHandler:SendSysMessage("Only the recruiter can summon the recruit. The recruit can NOT summon. You must be in a party/raid with each other.")
             RAF_cleanup()
             return false
+
+        elseif commandArray[2] == "lookup" and commandArray[3] ~= nil then
+            if player == nil or player:GetGMRank() >= Config.minGMRankForRead then
+
+                if RAF_recruiterAccount[commandArray[3]] ~= nil then
+
+                    chatHandler:SendSysMessage('Data for account '..commandArray[3]..':')
+                    chatHandler:SendSysMessage('Recruiter account: '..RAF_recruiterAccount[commandArray[3]])
+
+                    if RAF_timeStamp[commandArray[3]] == 0 then
+                        chatHandler:SendSysMessage('The RAF link was removed or expired.')
+                    elseif RAF_timeStamp[commandArray[3]] == 1 then
+                        chatHandler:SendSysMessage('The RAF link was succesful but is over.')
+                    elseif RAF_timeStamp[commandArray[3]] == -1 then
+                        chatHandler:SendSysMessage('The RAF link is permanently activated for a contributor.')
+                    end
+
+                    chatHandler:SendSysMessage('Same IP counter: '..RAF_sameIpCounter[commandArray[3]])
+                    chatHandler:SendSysMessage('Kick counter: '..RAF_kickCounter[commandArray[3]])
+                    chatHandler:SendSysMessage('Reward Level: '..RAF_rewardLevel[commandArray[3]])
+
+                else
+                    chatHandler:SendSysMessage('Account with ID '..commandArray[3]..' has not been recruited.')
+                end
+                return false
+            end
         end
     end
 end
