@@ -432,8 +432,12 @@ local function RAF_command(event, player, command, chatHandler)
             RAF_cleanup()
             return false
 
-        elseif commandArray[2] == "lookup" and commandArray[3] ~= nil then
+        elseif commandArray[2] == "lookup" then
             if player == nil or player:GetGMRank() >= Config.minGMRankForRead then
+                if commandArray[3] == nil then
+                    chatHandler:SendSysMessage('Expected syntax: .raf lookup $accountId')
+                    return false
+                end
 
                 if RAF_recruiterAccount[commandArray[3]] ~= nil then
 
