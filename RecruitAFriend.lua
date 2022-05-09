@@ -450,6 +450,8 @@ local function RAF_command(event, player, command, chatHandler)
                         chatHandler:SendSysMessage('The RAF link was succesful but is over.')
                     elseif RAF_timeStamp[commandArray[3]] == -1 then
                         chatHandler:SendSysMessage('The RAF link is permanently activated for a contributor.')
+                    else
+                        chatHandler:SendSysMessage('The RAF link is active and was activated at '..RAF_timeStamp[commandArray[3]])
                     end
 
                     chatHandler:SendSysMessage('Same IP counter: '..RAF_sameIpCounter[commandArray[3]])
