@@ -439,9 +439,10 @@ local function RAF_command(event, player, command, chatHandler)
                     return false
                 end
 
+                commandArray[3] = tonumber(commandArray[3])
                 if RAF_recruiterAccount[commandArray[3]] ~= nil then
 
-                    chatHandler:SendSysMessage('Data for account '..commandArray[3]..':')
+                    chatHandler:SendSysMessage('RAF Data for account '..commandArray[3]..':')
                     chatHandler:SendSysMessage('Recruiter account: '..RAF_recruiterAccount[commandArray[3]])
 
                     if RAF_timeStamp[commandArray[3]] == 0 then
@@ -453,11 +454,13 @@ local function RAF_command(event, player, command, chatHandler)
                     else
                         chatHandler:SendSysMessage('The RAF link is active and was activated at '..RAF_timeStamp[commandArray[3]])
                     end
-
                     chatHandler:SendSysMessage('Same IP counter: '..RAF_sameIpCounter[commandArray[3]])
                     chatHandler:SendSysMessage('Kick counter: '..RAF_kickCounter[commandArray[3]])
-                    chatHandler:SendSysMessage('Reward Level: '..RAF_rewardLevel[commandArray[3]])
-
+                    if RAF_rewardLevel[commandArray[3]] ~=nil then
+                        chatHandler:SendSysMessage('Reward Level: '..RAF_rewardLevel[commandArray[3]])
+                    else
+                        chatHandler:SendSysMessage('Reward Level: 0')
+                    end
                 else
                     chatHandler:SendSysMessage('Account with ID '..commandArray[3]..' has not been recruited.')
                 end
@@ -588,10 +591,10 @@ local function RAF_levelChange(event, player, oldLevel)
         return false
     end
 
-     -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
+    -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
     if Config.grantRested == 1 then
         player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
-    end 
+    end
 end
 
 --INIT sequence:
