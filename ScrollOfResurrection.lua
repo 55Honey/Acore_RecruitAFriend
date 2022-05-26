@@ -95,10 +95,10 @@ Config.AutoKillSameIPLinks = 1
 --Config_rewards[10] =
 
 -- amount of rewards per reward_level FOR RECRUITERS
-Config_amounts[1] = 1
-Config_amounts[3] = 1
-Config_amounts[5] = 1
-Config_amounts[10] = 1
+--Config_amounts[1] = 1
+--Config_amounts[3] = 1
+--Config_amounts[5] = 1
+--Config_amounts[10] = 1
 
 -- default rewards if nothing is set in Config_rewards for a certain level. May be changed. May NOT be removed. FOR RECRUITERS
 Config_defaultRewards[1] = 9155   -- Battle elixir spellpower
