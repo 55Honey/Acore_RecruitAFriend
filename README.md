@@ -63,7 +63,7 @@ See the lua file for a description of the config flags.
 
 
 ## Default settings/rewards:
-- There should be an option in the account creation page to determine a recruiter account. Recruiters can type `.raf`/`.sof` to find out about their account id.
+- There should be an option in the account creation page to determine a recruiter account. Recruiters can type `.raf`/`.sor` to find out about their account id.
 - Once connected, recruiters can summon their recruits/resurrecteds without a limit. Abuse might lead to kicks which are logged.
 - Using the same IP for recruiter and recruit/resurrected is restricted by default and also prevents teleporting and is logged.
 - For RAF only: Once a recruit reaches the target level of 55, their recruiter gains a reward. The default rewards are a Mini-Thor pet for the first recruit, a 14-slot bag for the second recruit, the Diablos-Stone pet for the fifth recruit and a Tyrael's Hilt pet for the 10th recruit to reach the target level of 55. For the 4th recruit, the 6th - 9th recruit and any recruit past 10, the recruiter will receive a set of 4 stacks of potions/elixirs.
