@@ -29,6 +29,8 @@ local Config_rewards = {}
 local Config_amounts = {}
 local Config_defaultRewards = {}
 local Config_defaultAmounts = {}
+local Config_resurrectRewards = {}
+local Config_resurrectAmounts = {}
 
 -- Name of Eluna dB scheme
 Config.customDbName = "ac_eluna"
