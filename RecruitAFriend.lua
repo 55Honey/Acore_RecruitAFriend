@@ -55,6 +55,8 @@ Config.displayLoginMessage = 1
 Config.targetLevel = 55
 
 -- set to 1 to grant always rested for premium past Config.targetLevel. Any other value including nil turns it off.
+-- the same feature exists in the ScrollOfResurrection.lua. Only one of them is required to be 1. Setting both to 1 causes
+-- additional load but yields no benefit.
 Config.premiumFeature = 0
 
 -- maximum number of RAF related command uses before a kick. Includes summon requests.
@@ -81,7 +83,7 @@ Config.mailStationery = 41
 -- should links on the same IP be removed automatically on startup / reload?
 Config.AutoKillSameIPLinks = 1
 
--- rewards towards the recruiter for certain amounts of recruits who reached the target level. If not defined for a level, send the whole set of default potions
+-- rewards towards the recruiter for certain amounts of recruits who reached the target level. If not defined for a level, send the whole set of defaultRewards
 Config_rewards[1] = 56806    -- Mini Thor , Pet which is bound to account
 Config_rewards[3] = 14046    -- Runecloth Bag - 14-slot
 Config_rewards[5] = 13584    -- Diablos Stone, Pet which is bound to account
@@ -111,7 +113,7 @@ table.insert(Config_maps, 0)
 -- Kalimdor
 table.insert(Config_maps, 1)
 -- Outland
---table.insert(Config_maps, 530)
+table.insert(Config_maps, 530)
 -- Northrend
 --table.insert(Config_maps, 571)
 ------------------------------------------
