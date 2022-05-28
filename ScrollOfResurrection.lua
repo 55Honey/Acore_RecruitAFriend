@@ -281,11 +281,7 @@ local function SOR_checkAbuse(accountId)
     else
         SOR_abuseCounter[accountId] = SOR_abuseCounter[accountId] + 1
     end
-
-    if SOR_abuseCounter[accountId] > Config.abuseTreshold then
-        return true
-    end
-    return false
+    return SOR_abuseCounter[accountId] > Config.abuseTreshold
 end
 
 local function SOR_command(event, player, command, chatHandler)
@@ -308,7 +304,9 @@ local function SOR_command(event, player, command, chatHandler)
 
         if player ~= nil then
             if player:GetGMRank() < Config.minGMRankForBind then
-                if Config.printErrorsToConsole == 1 then PrintInfo("Account "..player:GetAccountId().." tried the .bindsor command without sufficient rights.") end
+                if Config.printErrorsToConsole == 1 then
+                    PrintInfo("Account "..player:GetAccountId().." tried the .bindsor command without sufficient rights.")
+                end
                 return
             end
         end
@@ -470,14 +468,12 @@ local function SOR_command(event, player, command, chatHandler)
                                 if SOR_sameIpCounter[summonPlayer:GetAccountId()] == nil then
                                     SOR_sameIpCounter[summonPlayer:GetAccountId()] = 1
                                     CharDBExecute('UPDATE `'..Config.customDbName..'`.`scroll_of_resurrection_links` SET ip_abuse_counter = '..SOR_sameIpCounter[summonPlayer:GetAccountId()]..' WHERE `account_id` = '..summonPlayer:GetAccountId()..';')
-                                    SOR_cleanup()
-                                    return false
                                 else
                                     SOR_sameIpCounter[summonPlayer:GetAccountId()] = SOR_sameIpCounter[summonPlayer:GetAccountId()] + 1
                                     CharDBExecute('UPDATE `'..Config.customDbName..'`.`scroll_of_resurrection_links` SET ip_abuse_counter = '..SOR_sameIpCounter[summonPlayer:GetAccountId()]..' WHERE `account_id` = '..summonPlayer:GetAccountId()..';')
-                                    SOR_cleanup()
-                                    return false
                                 end
+                                SOR_cleanup()
+                                return false
                             end
                             v:SummonPlayer(player)
                         end
@@ -580,10 +576,8 @@ local function SOR_login(event, player)
     if SOR_timeStamp[accountId] <= 1 then
         if SOR_timeStamp[accountId] == -1 and Config.premiumFeature == 1 then
             player:SetRestBonus(SOR_xpPerLevel[player:GetLevel()])
-            return false
-        else
-            return false
         end
+        return false
     end
 
     --reset abuse counter
@@ -664,10 +658,8 @@ local function SOR_levelChange(event, player, oldLevel)
     if SOR_recruiterAccount[accountId] == nil or SOR_timeStamp[accountId] <= 1 then
         if SOR_timeStamp[accountId] == -1 and Config.premiumFeature == 1 then
             player:SetRestBonus(SOR_xpPerLevel[oldLevel + 1])
-            return false
-        else
-            return false
         end
+        return false
     end
 
     if oldLevel + 1 >= Config.targetLevel then

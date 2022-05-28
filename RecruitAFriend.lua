@@ -265,11 +265,7 @@ local function RAF_checkAbuse(accountId)
     else
         RAF_abuseCounter[accountId] = RAF_abuseCounter[accountId] + 1
     end
-
-    if RAF_abuseCounter[accountId] > Config.abuseTreshold then
-        return true
-    end
-    return false
+    return RAF_abuseCounter[accountId] > Config.abuseTreshold
 end
 
 local function RAF_command(event, player, command, chatHandler)
@@ -325,7 +321,9 @@ local function RAF_command(event, player, command, chatHandler)
 
         if player ~= nil then
             if player:GetGMRank() < Config.minGMRankForBind then
-                if Config.printErrorsToConsole == 1 then PrintInfo("Account "..player:GetAccountId().." tried the .forcebindraf command without sufficient rights.") end
+                if Config.printErrorsToConsole == 1 then
+                    PrintInfo("Account "..player:GetAccountId().." tried the .forcebindraf command without sufficient rights.")
+                end
                 return
             end
         end
@@ -454,14 +452,12 @@ local function RAF_command(event, player, command, chatHandler)
                                 if RAF_sameIpCounter[summonPlayer:GetAccountId()] == nil then
                                     RAF_sameIpCounter[summonPlayer:GetAccountId()] = 1
                                     CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET ip_abuse_counter = '..RAF_sameIpCounter[summonPlayer:GetAccountId()]..' WHERE `account_id` = '..summonPlayer:GetAccountId()..';')
-                                    RAF_cleanup()
-                                    return false
                                 else
                                     RAF_sameIpCounter[summonPlayer:GetAccountId()] = RAF_sameIpCounter[summonPlayer:GetAccountId()] + 1
                                     CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET ip_abuse_counter = '..RAF_sameIpCounter[summonPlayer:GetAccountId()]..' WHERE `account_id` = '..summonPlayer:GetAccountId()..';')
-                                    RAF_cleanup()
-                                    return false
                                 end
+                                RAF_cleanup()
+                                return false
                             end
                             v:SummonPlayer(player)
                         end
@@ -564,10 +560,8 @@ local function RAF_login(event, player)
     if RAF_timeStamp[accountId] <= 1 then
         if RAF_timeStamp[accountId] == -1 and Config.premiumFeature == 1 then
             player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
-            return false
-        else
-            return false
         end
+        return false
     end
 
     --reset abuse counter
