@@ -524,8 +524,19 @@ local function RAF_command(event, player, command, chatHandler)
                     else
                         chatHandler:SendSysMessage('The RAF link is active and was activated at '..RAF_gmtime(RAF_timeStamp[commandArray[3]]))
                     end
-                    chatHandler:SendSysMessage('Same IP counter: '..RAF_sameIpCounter[commandArray[3]])
-                    chatHandler:SendSysMessage('Kick counter: '..RAF_kickCounter[commandArray[3]])
+
+                    if RAF_sameIpCounter[commandArray[3]] then
+                        chatHandler:SendSysMessage('Same IP counter: '..RAF_sameIpCounter[commandArray[3]])
+                    else
+                        chatHandler:SendSysMessage('Same IP counter: 0')
+                    end
+
+                    if RAF_kickCounter[commandArray[3]] then
+                        chatHandler:SendSysMessage('Kick counter: '..RAF_kickCounter[commandArray[3]])
+                    else
+                        chatHandler:SendSysMessage('Kick counter: 0')
+                    end
+
                     if RAF_rewardLevel[commandArray[3]] ~=nil then
                         chatHandler:SendSysMessage('Reward Level: '..RAF_rewardLevel[commandArray[3]])
                     else
