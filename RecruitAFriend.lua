@@ -52,7 +52,7 @@ Config.grantRested = 1
 Config.displayLoginMessage = 1
 
 -- the level which a player must reach to reward it's recruiter and automatically end RAF
-Config.targetLevel = 55
+Config.targetLevel = 58
 
 -- set to 1 to grant always rested for premium past Config.targetLevel. Any other value including nil turns it off.
 Config.premiumFeature = 0
@@ -111,7 +111,7 @@ table.insert(Config_maps, 0)
 -- Kalimdor
 table.insert(Config_maps, 1)
 -- Outland
---table.insert(Config_maps, 530)
+table.insert(Config_maps, 530)
 -- Northrend
 --table.insert(Config_maps, 571)
 ------------------------------------------
