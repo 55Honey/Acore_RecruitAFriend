@@ -595,9 +595,7 @@ local function RAF_login(event, player)
 
     -- add 1 full level of rested at login while in RAF
     if Config.grantRested == 1 then
-        if _G.ChallengeModes == nil then
-            player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
-        elseif _G.ChallengeModes ~= nil and not _G.ChallengeModes:isPlayerEnlisted(player) then
+        if _G.ChallengeModes == nil or not _G.ChallengeModes:isPlayerEnlisted(player) then
             player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
         end
     end
@@ -686,10 +684,8 @@ local function RAF_levelChange(event, player, oldLevel)
 
     -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
     if Config.grantRested == 1 then
-        if _G.ChallengeModes == nil then
-            player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
-        elseif _G.ChallengeModes ~= nil and not _G.ChallengeModes:isPlayerEnlisted(player) then
-            player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
+        if _G.ChallengeModes == nil or not _G.ChallengeModes:isPlayerEnlisted(player) then
+            player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
         end
     end
 end
