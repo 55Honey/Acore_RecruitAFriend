@@ -572,6 +572,9 @@ local function RAF_login(event, player)
     -- check for RAF timeout on login of the RECRUIT, possibly remove the link
     if RAF_timeStamp[accountId] <= 1 then
         if RAF_timeStamp[accountId] == -1 and Config.premiumFeature == 1 then
+            if _G.ChallengeModes ~= nil and _G.ChallengeModes:isPlayerEnlisted(player) then
+                return false
+            end
             player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
             return false
         else
@@ -592,7 +595,9 @@ local function RAF_login(event, player)
 
     -- add 1 full level of rested at login while in RAF
     if Config.grantRested == 1 then
-        player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
+        if _G.ChallengeModes == nil or not _G.ChallengeModes:isPlayerEnlisted(player) then
+            player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
+        end
     end
 
     -- same IP check
@@ -653,6 +658,9 @@ local function RAF_levelChange(event, player, oldLevel)
     -- check for RAF timeout on login of the RECRUIT, possibly remove the link
     if RAF_recruiterAccount[accountId] == nil or RAF_timeStamp[accountId] <= 1 then
         if RAF_timeStamp[accountId] == -1 and Config.premiumFeature == 1 then
+            if _G.ChallengeModes ~= nil and _G.ChallengeModes:isPlayerEnlisted(player) then
+                return false
+            end
             player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
             return false
         else
@@ -676,7 +684,9 @@ local function RAF_levelChange(event, player, oldLevel)
 
     -- add 1 full level of rested at levelup while in RAF and not at maxlevel with Player:SetRestBonus( restBonus )
     if Config.grantRested == 1 then
-        player:SetRestBonus(RAF_xpPerLevel[oldLevel + 1])
+        if _G.ChallengeModes == nil or not _G.ChallengeModes:isPlayerEnlisted(player) then
+            player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
+        end
     end
 end
 
