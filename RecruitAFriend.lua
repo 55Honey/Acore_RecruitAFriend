@@ -637,7 +637,7 @@ local function GrantReward(recruiterId)
     if Data_SQL ~= nil then
         recruiterCharacter = Data_SQL:GetUInt32(0)
     else
-        if Config.printErrorsToConsole == 1 then PrintError("RAF: No character found on recruiter account with id "..recruiterId..", which was eligable for a RAF reward of level "..RAF_recruiterAccount[recruiterId]..".") end
+        if Config.printErrorsToConsole == 1 then PrintError("RAF: No character found on recruiter account with id "..recruiterId..", which was eligable for a RAF reward of level "..RAF_rewardLevel[recruiterId]..".") end
         return
     end
 
