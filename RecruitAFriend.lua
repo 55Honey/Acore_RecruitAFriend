@@ -83,7 +83,7 @@ Config.AutoKillSameIPLinks = 1
 
 -- rewards towards the recruiter for certain amounts of recruits who reached the target level. If not defined for a level, send the whole set of default potions
 Config_rewards[1] = 56806    -- Mini Thor , Pet which is bound to account
-Config_rewards[3] = 14046    -- Runecloth Bag - 14-slot
+Config_rewards[3] = 21841    -- Nether Cloth Bag - 16-slot
 Config_rewards[5] = 13584    -- Diablos Stone, Pet which is bound to account
 Config_rewards[10] = 39656   -- Tyrael's Hilt, Pet which is bound to account
 
