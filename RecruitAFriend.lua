@@ -94,9 +94,9 @@ Config_amounts[5] = 1
 Config_amounts[10] = 1
 
 -- default rewards if nothing is set in Config_rewards for a certain level. May be changed. May NOT be removed.
-Config_defaultRewards[1] = 9155   -- Battle elixir spellpower
-Config_defaultRewards[2] = 9187   -- Battle elixir agility
-Config_defaultRewards[3] = 9206   -- Battle elixir strength
+Config_defaultRewards[1] = 13454  -- Battle elixir spellpower
+Config_defaultRewards[2] = 13452  -- Battle elixir agility
+Config_defaultRewards[3] = 13453  -- Battle elixir strength
 Config_defaultRewards[4] = 5634   -- Potion of Free Action
 
 Config_defaultAmounts[1] = 10
