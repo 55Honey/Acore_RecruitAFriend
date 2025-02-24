@@ -54,6 +54,9 @@ Config.displayLoginMessage = 1
 -- the level which a player must reach to reward it's recruiter and automatically end RAF
 Config.targetLevel = 58
 
+-- determines if the RAF link get removed when reaching the targetLevel
+Config.endOnLevel = 1
+
 -- set to 1 to grant always rested for premium past Config.targetLevel. Any other value including nil turns it off.
 Config.premiumFeature = 0
 
@@ -673,13 +676,15 @@ local function RAF_levelChange(event, player, oldLevel)
         end
     end
 
-    if oldLevel + 1 >= Config.targetLevel then
-        -- set time_stamp to 1 and Grant rewards
-        RAF_timeStamp[accountId] = 1
-        CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 1 WHERE `account_id` = '..accountId..';')
-        GrantReward(RAF_recruiterAccount[accountId])
-        player:SendBroadcastMessage("Your RAF link has reached the level-limit. Your recruiter has earned a reward. Go and bring your friends, too!")
-        return false
+    if Config.endOnLevel == 1 then
+        if oldLevel + 1 >= Config.targetLevel then
+            -- set time_stamp to 1 and Grant rewards
+            RAF_timeStamp[accountId] = 1
+            CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET time_stamp = 1 WHERE `account_id` = '..accountId..';')
+            GrantReward(RAF_recruiterAccount[accountId])
+            player:SendBroadcastMessage("Your RAF link has reached the level-limit. Your recruiter has earned a reward. Go and bring your friends, too!")
+            return false
+        end
     end
 
     local recruiterId = RAF_recruiterAccount[accountId]
