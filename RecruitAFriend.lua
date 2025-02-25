@@ -58,6 +58,8 @@ Config.targetLevel = 58
 Config.endOnLevel = 1
 
 -- set to 1 to grant always rested for premium past Config.targetLevel. Any other value including nil turns it off.
+-- the same feature exists in the ScrollOfResurrection.lua. Only one of them is required to be 1. Setting both to 1 causes
+-- additional load but yields no benefit.
 Config.premiumFeature = 0
 
 -- maximum number of RAF related command uses before a kick. Includes summon requests.
@@ -84,7 +86,7 @@ Config.mailStationery = 41
 -- should links on the same IP be removed automatically on startup / reload?
 Config.AutoKillSameIPLinks = 1
 
--- rewards towards the recruiter for certain amounts of recruits who reached the target level. If not defined for a level, send the whole set of default potions
+-- rewards towards the recruiter for certain amounts of recruits who reached the target level. If not defined for a level, send the whole set of defaultRewards
 Config_rewards[1] = 56806    -- Mini Thor , Pet which is bound to account
 Config_rewards[3] = 21841    -- Nether Cloth Bag - 16-slot
 Config_rewards[5] = 13584    -- Diablos Stone, Pet which is bound to account
@@ -266,11 +268,7 @@ local function RAF_checkAbuse(accountId)
     else
         RAF_abuseCounter[accountId] = RAF_abuseCounter[accountId] + 1
     end
-
-    if RAF_abuseCounter[accountId] > Config.abuseTreshold then
-        return true
-    end
-    return false
+    return RAF_abuseCounter[accountId] > Config.abuseTreshold
 end
 
 local function RAF_command(event, player, command, chatHandler)
@@ -326,7 +324,9 @@ local function RAF_command(event, player, command, chatHandler)
 
         if player ~= nil then
             if player:GetGMRank() < Config.minGMRankForBind then
-                if Config.printErrorsToConsole == 1 then PrintInfo("Account "..player:GetAccountId().." tried the .forcebindraf command without sufficient rights.") end
+                if Config.printErrorsToConsole == 1 then
+                    PrintInfo("Account "..player:GetAccountId().." tried the .forcebindraf command without sufficient rights.")
+                end
                 return
             end
         end
@@ -460,14 +460,12 @@ local function RAF_command(event, player, command, chatHandler)
                                 if RAF_sameIpCounter[summonPlayer:GetAccountId()] == nil then
                                     RAF_sameIpCounter[summonPlayer:GetAccountId()] = 1
                                     CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET ip_abuse_counter = '..RAF_sameIpCounter[summonPlayer:GetAccountId()]..' WHERE `account_id` = '..summonPlayer:GetAccountId()..';')
-                                    RAF_cleanup()
-                                    return false
                                 else
                                     RAF_sameIpCounter[summonPlayer:GetAccountId()] = RAF_sameIpCounter[summonPlayer:GetAccountId()] + 1
                                     CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET ip_abuse_counter = '..RAF_sameIpCounter[summonPlayer:GetAccountId()]..' WHERE `account_id` = '..summonPlayer:GetAccountId()..';')
-                                    RAF_cleanup()
-                                    return false
                                 end
+                                RAF_cleanup()
+                                return false
                             end
                             v:SummonPlayer(player)
                         end
@@ -584,10 +582,8 @@ local function RAF_login(event, player)
                 return false
             end
             player:SetRestBonus(RAF_xpPerLevel[player:GetLevel()])
-            return false
-        else
-            return false
         end
+        return false
     end
 
     --reset abuse counter
