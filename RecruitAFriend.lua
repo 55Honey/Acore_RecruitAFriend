@@ -52,13 +52,13 @@ Config.grantRested = 1
 Config.displayLoginMessage = 1
 
 -- the level which a player must reach to reward it's recruiter and automatically end RAF
-Config.targetLevel = 58
+Config.targetLevel = 69
 
 -- determines if the RAF link get removed when reaching the targetLevel
-Config.endOnLevel = 1
+Config.endOnLevel = 0
 
 -- set to 1 to grant always rested for premium past Config.targetLevel. Any other value including nil turns it off.
-Config.premiumFeature = 0
+Config.premiumFeature = 1
 
 -- maximum number of RAF related command uses before a kick. Includes summon requests.
 Config.abuseTreshold = 1000
@@ -147,6 +147,7 @@ RAF_sameIpCounter = {}
 RAF_kickCounter = {}
 RAF_lastIP = {}
 RAF_rewardLevel = {}
+RAF_complete = {}
 
 local function RAF_numeralise(n)
     n = tostring(n)
@@ -406,11 +407,6 @@ local function RAF_command(event, player, command, chatHandler)
         elseif commandArray[2] == "summon" then
             if player == nil then
                 chatHandler:SendSysMessage("'.raf summon' is not meant to be used from the console.")
-                return false
-            end
-
-            if player:IsFlying() then
-                chatHandler:SendSysMessage("'.raf summon' can not be used while flying.")
                 return false
             end
 
@@ -685,7 +681,16 @@ local function RAF_levelChange(event, player, oldLevel)
             player:SendBroadcastMessage("Your RAF link has reached the level-limit. Your recruiter has earned a reward. Go and bring your friends, too!")
             return false
         end
-    end
+    else
+        if oldLevel == Config.targetLevel then
+            -- grant rewards
+            if RAF_complete[accountId] == 0 then
+                GrantReward(RAF_recruiterAccount[accountId])
+                CharDBExecute('UPDATE `'..Config.customDbName..'`.`recruit_a_friend_links` SET `complete` = 1 WHERE `account_id` = '..accountId..';')
+                player:SendBroadcastMessage("Your RAF link has reached the level-limit. Your recruiter has earned a reward. Go and bring your friends, too!")
+                return false
+            end
+        end
 
     local recruiterId = RAF_recruiterAccount[accountId]
     if recruiterId == nil then
@@ -741,6 +746,7 @@ if RAF_Data_SQL ~= nil then
         RAF_timeStamp[RAF_id] = tonumber(RAF_Data_SQL:GetInt32(2))
         RAF_sameIpCounter[RAF_id] = RAF_Data_SQL:GetUInt32(3)
         RAF_kickCounter[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(4))
+        RAF_complete[RAF_id] = tonumber(RAF_DATA_SQL::GetUint32(5))
     until not RAF_Data_SQL:NextRow()
 else
     PrintError("RAF: Found no linked accounts in the recruit_a_friend table. Possibly there are none yet.")
