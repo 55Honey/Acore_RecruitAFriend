@@ -52,7 +52,7 @@ Config.grantRested = 1
 Config.displayLoginMessage = 1
 
 -- the level which a player must reach to reward it's recruiter and automatically end RAF
-Config.targetLevel = 69
+Config.targetLevel = 70
 
 -- determines if the RAF link get removed when reaching the targetLevel
 Config.endOnLevel = 0
@@ -311,7 +311,7 @@ local function RAF_command(event, player, command, chatHandler)
             if RAF_recruiterAccount[accountId] == nil then
                 RAF_recruiterAccount[accountId] = tonumber(commandArray[3])
                 RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
-                CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0, "");')
+                CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0, 0, "");')
                 chatHandler:SendSysMessage(commandSource.." has succesfully used the .bindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".")
             else
                 chatHandler:SendSysMessage("The selected account "..accountId.." is already recruited by "..RAF_recruiterAccount[accountId]..".")
@@ -343,7 +343,7 @@ local function RAF_command(event, player, command, chatHandler)
             local accountId = tonumber(commandArray[2])
             RAF_recruiterAccount[accountId] = tonumber(commandArray[3])
             RAF_timeStamp[accountId] = (tonumber(tostring(GetGameTime())))
-            CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0, "");')
+            CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`recruit_a_friend_links` VALUES ('..accountId..', '..RAF_recruiterAccount[accountId]..', '..RAF_timeStamp[accountId]..', 0, 0, 0, "");')
             chatHandler:SendSysMessage(commandSource.." has succesfully used the .forcebindraf command on recruit "..accountId.." and recruiter "..RAF_recruiterAccount[accountId]..".")
         else
             chatHandler:SendSysMessage("Admin/GM Syntax: .bindraf $recruit $recruiter binds the accounts to each other.")
@@ -682,7 +682,7 @@ local function RAF_levelChange(event, player, oldLevel)
             return false
         end
     else
-        if oldLevel == Config.targetLevel then
+        if oldLevel + 1 >= Config.targetLevel then
             -- grant rewards
             if RAF_complete[accountId] == 0 then
                 GrantReward(RAF_recruiterAccount[accountId])
