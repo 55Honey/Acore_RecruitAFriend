@@ -410,6 +410,11 @@ local function RAF_command(event, player, command, chatHandler)
                 return false
             end
 
+            if player:IsFlying() then
+                chatHandler:SendSysMessage("'.raf summon' can not be used while flying.")
+                return false
+            end
+
             if commandArray[3] == nil then
                 chatHandler:SendSysMessage("'.raf summon' requires the name of the target. Use '.raf summon $Name'")
                 return false
