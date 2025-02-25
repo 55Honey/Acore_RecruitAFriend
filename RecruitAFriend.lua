@@ -691,6 +691,7 @@ local function RAF_levelChange(event, player, oldLevel)
                 return false
             end
         end
+    end
 
     local recruiterId = RAF_recruiterAccount[accountId]
     if recruiterId == nil then
@@ -746,7 +747,7 @@ if RAF_Data_SQL ~= nil then
         RAF_timeStamp[RAF_id] = tonumber(RAF_Data_SQL:GetInt32(2))
         RAF_sameIpCounter[RAF_id] = RAF_Data_SQL:GetUInt32(3)
         RAF_kickCounter[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(4))
-        RAF_complete[RAF_id] = tonumber(RAF_DATA_SQL::GetUint32(5))
+        RAF_complete[RAF_id] = tonumber(RAF_Data_SQL:GetUInt32(5))
     until not RAF_Data_SQL:NextRow()
 else
     PrintError("RAF: Found no linked accounts in the recruit_a_friend table. Possibly there are none yet.")
