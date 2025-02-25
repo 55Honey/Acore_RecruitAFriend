@@ -52,13 +52,13 @@ Config.grantRested = 1
 Config.displayLoginMessage = 1
 
 -- the level which a player must reach to reward it's recruiter and automatically end RAF
-Config.targetLevel = 70
+Config.targetLevel = 58
 
 -- determines if the RAF link get removed when reaching the targetLevel
-Config.endOnLevel = 0
+Config.endOnLevel = 1
 
 -- set to 1 to grant always rested for premium past Config.targetLevel. Any other value including nil turns it off.
-Config.premiumFeature = 1
+Config.premiumFeature = 0
 
 -- maximum number of RAF related command uses before a kick. Includes summon requests.
 Config.abuseTreshold = 1000
